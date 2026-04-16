@@ -1,0 +1,558 @@
+'use client'
+
+import React from 'react';
+import styled from 'styled-components';
+import ConnectedTags from './connectedTags';
+import Image from 'next/image';
+import ScoreTimer from './scoreTimer';
+import Superboost from './superboost';
+import HotTag from './hotTag';
+import BestOddTag from './bestOddTag';
+
+const Component = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0px 0px 12px 0px;
+  color: ${({ theme }) => theme.colors.text};
+  width: 100%;
+`;
+
+const Head = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 0 0 0;
+`;
+
+const LeftTags = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const RightTags = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const Content = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 0px 12px;
+`;
+
+const MarkerRow = styled.div<{ $scale?: number }>`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 4px;
+  
+  & > * {
+    transform: scale(${({ $scale }) => $scale || 1});
+    transform-origin: left center;
+  }
+`;
+
+const Bottom = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+`;
+
+const Inner = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 45px 45px 45px;
+  width: 100%;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+`;
+
+const InnerAlt = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 45px 45px 45px 15px;
+  width: 100%;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+`;
+
+const Date = styled.span`
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 12px;
+  color: ${({ theme }) => theme.colors.grayText};
+  font-family: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  text-align: left;
+  margin: 0;
+`;
+
+const OddSign = styled.span`
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 12px;
+  color: ${({ theme }) => theme.colors.grayText};
+  font-family: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  text-align: center;
+  margin: 0;
+`;
+
+const ScoreInfo = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    gap: 4px;
+`
+
+const TeamBlock = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 7px;
+    width: 100%;
+`
+
+const TeamText = styled.span`
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 16px;
+  color: ${({ theme }) => theme.colors.text};
+  font-family: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  text-align: left;
+  margin-top: 2px;
+`;
+
+const Badge = styled(Image)`
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+`
+
+const Odd = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 45px;
+    height: 24px;
+    border: 1px solid ${({ theme }) => theme.colors.border};
+    border-radius: 8px;
+    font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  color: ${({ theme }) => theme.colors.text};
+  font-family: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  text-align: center;
+`
+
+const Score = styled.div`
+display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 24px;
+    font-size: 13px;
+  font-weight: 700;
+  line-height: 16px;
+  color: ${({ theme }) => theme.colors.hot};
+  font-family: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  text-align: center;
+`
+
+const ScoreEnd = styled.div`
+display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 24px;
+    font-size: 13px;
+  font-weight: 700;
+  line-height: 16px;
+  color: ${({ theme }) => theme.colors.end};
+  font-family: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  text-align: center;
+`
+
+const ScoreHalf = styled.div`
+display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 24px;
+    font-size: 13px;
+  font-weight: 700;
+  line-height: 16px;
+  color: ${({ theme }) => theme.colors.half};
+  font-family: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  text-align: center;
+`
+
+type MatchStatus = 'live' | 'ended' | 'not_started' | 'cancelled' | 'postponed' | 'finished' | 'halftime';
+
+interface ScoreProps {
+  homeTeam: string;
+  awayTeam: string;
+  homeImage: string;
+  awayImage: string;
+  date: string;
+  time: string;
+  homeScore?: string;
+  awayScore?: string;
+  homeRedCard?: number;
+  awayRedCard?: number;
+  status: MatchStatus;
+  isActive: boolean;
+  minute?: number;
+  isSuperboostAvailable?: boolean;
+}
+
+const OddScoreItem = ({ 
+  homeTeam, 
+  awayTeam, 
+  homeImage, 
+  awayImage, 
+  time, 
+  homeScore, 
+  awayScore, 
+  homeRedCard = 0, 
+  awayRedCard = 0, 
+  status, 
+  isActive, 
+  minute,
+  isSuperboostAvailable = false
+}: ScoreProps) => {
+  
+  const getLeftTag = () => {
+    const random = Math.random();
+    
+    if (status !== 'live' && status !== 'not_started') {
+      return null;
+    }
+    
+    if (status === 'live') {
+      if (random < 0.15) {
+        return <HotTag />;
+      } else if (random < 0.25) {
+        return <BestOddTag />;
+      } else if (random < 0.35) {
+        return <ConnectedTags />;
+      }
+      return null;
+    }
+    
+    if (status === 'not_started') {
+      if (random < 0.2) {
+        return <ConnectedTags />;
+      } else if (random < 0.3) {
+        return <BestOddTag />;
+      }
+      return null;
+    }
+    
+    return null;
+  };
+
+  const getRightTag = () => {
+    if (status !== 'live' && status !== 'not_started') {
+      return null;
+    }
+    
+    if (isSuperboostAvailable && status === 'live') {
+      const random = Math.random();
+      if (random < 0.3) {
+        return <Superboost />;
+      }
+    }
+    
+    if (isSuperboostAvailable && status === 'not_started') {
+      const random = Math.random();
+      if (random < 0.15) {
+        return <Superboost />;
+      }
+    }
+    
+    return null;
+  };
+
+  const leftTag = getLeftTag();
+  const rightTag = getRightTag();
+
+  const renderHeader = () => {
+    if (!leftTag && !rightTag) return null;
+    
+    return (
+      <Head>
+        <LeftTags>
+          {leftTag && (
+            <MarkerRow $scale={0.8}>
+              {leftTag}
+            </MarkerRow>
+          )}
+        </LeftTags>
+        <RightTags>
+          {rightTag && (
+            <MarkerRow $scale={0.8}>
+              {rightTag}
+            </MarkerRow>
+          )}
+        </RightTags>
+      </Head>
+    );
+  };
+
+    if (status === 'live') {
+        return (
+            <Component>
+                {renderHeader()}
+                <Content>
+                    <Bottom>
+                        <InnerAlt>
+                            <ScoreTimer minute={minute || 55} />
+                            <OddSign>1</OddSign>
+                            <OddSign>X</OddSign>
+                            <OddSign>2</OddSign>
+                            <OddSign> </OddSign>
+                        </InnerAlt>
+                  
+                        <ScoreInfo>
+                            <InnerAlt>
+                                <TeamBlock>
+                                    <Badge src={homeImage} width={18} height={18} alt='badge' />
+                                    <TeamText>{homeTeam}</TeamText>
+                                </TeamBlock>
+                                <Odd>1.85</Odd>
+                                <Odd>3.50</Odd>
+                                <Odd>4.20</Odd>
+                                <Score>{homeScore || '0'}</Score>
+                            </InnerAlt>
+                            <InnerAlt>
+                                <TeamBlock>
+                                    <Badge src={awayImage} width={18} height={18} alt='badge' />
+                                    <TeamText>{awayTeam}</TeamText>
+                                </TeamBlock>
+                                <Odd>3.85</Odd>
+                                <Odd>0.50</Odd>
+                                <Odd>1.20</Odd>
+                                <Score>{awayScore || '0'}</Score>
+                            </InnerAlt>
+                        </ScoreInfo>
+                    </Bottom>
+                </Content>
+            </Component>
+        );
+    }
+    if (status === 'not_started') {
+        return (
+            <Component>
+                {renderHeader()}
+                <Content>
+                    <Bottom>
+                        <Inner>
+                            <Date>{time}</Date>
+                            <OddSign>1</OddSign>
+                            <OddSign>X</OddSign>
+                            <OddSign>2</OddSign>
+                        </Inner>
+                  
+                        <ScoreInfo>
+                            <Inner>
+                                <TeamBlock>
+                                    <Badge src={homeImage} width={18} height={18} alt='badge' />
+                                    <TeamText>{homeTeam}</TeamText>
+                                </TeamBlock>
+                                <Odd>1.85</Odd>
+                                <Odd>3.50</Odd>
+                                <Odd>4.20</Odd>
+                            </Inner>
+                            <Inner>
+                                <TeamBlock>
+                                    <Badge src={awayImage} width={18} height={18} alt='badge' />
+                                    <TeamText>{awayTeam}</TeamText>
+                                </TeamBlock>
+                                <Odd>3.85</Odd>
+                                <Odd>0.50</Odd>
+                                <Odd>1.20</Odd>
+                            </Inner>
+                        </ScoreInfo>
+                    </Bottom>
+                </Content>
+            </Component>
+        );
+    }
+    if (status === 'ended' || status === 'finished') {
+        return (
+            <Component>
+                <Content>
+                    <Bottom>
+                        <InnerAlt>
+                            <ScoreTimer minute={90} isFulltime={true} />
+                            <OddSign>1</OddSign>
+                            <OddSign>X</OddSign>
+                            <OddSign>2</OddSign>
+                            <ScoreEnd> </ScoreEnd>
+                        </InnerAlt>
+                  
+                        <ScoreInfo>
+                            <InnerAlt>
+                                <TeamBlock>
+                                    <Badge src={homeImage} width={18} height={18} alt='badge' />
+                                    <TeamText>{homeTeam}</TeamText>
+                                </TeamBlock>
+                                <Odd>1.85</Odd>
+                                <Odd>3.50</Odd>
+                                <Odd>4.20</Odd>
+                                <ScoreEnd>{homeScore || '0'}</ScoreEnd>
+                            </InnerAlt>
+                            <InnerAlt>
+                                <TeamBlock>
+                                    <Badge src={awayImage} width={18} height={18} alt='badge' />
+                                    <TeamText>{awayTeam}</TeamText>
+                                </TeamBlock>
+                                <Odd>3.85</Odd>
+                                <Odd>0.50</Odd>
+                                <Odd>1.20</Odd>
+                                <ScoreEnd>{awayScore || '0'}</ScoreEnd>
+                            </InnerAlt>
+                        </ScoreInfo>
+                    </Bottom>
+                </Content>
+            </Component>
+        );
+    }
+    if (status === 'halftime') {
+        return (
+            <Component>
+                <Content>
+                    <Bottom>
+                        <InnerAlt>
+                            <ScoreTimer minute={45} isHalftime={true} />
+                            <OddSign>1</OddSign>
+                            <OddSign>X</OddSign>
+                            <OddSign>2</OddSign>
+                            <ScoreHalf> </ScoreHalf>
+                        </InnerAlt>
+                  
+                        <ScoreInfo>
+                            <InnerAlt>
+                                <TeamBlock>
+                                    <Badge src={homeImage} width={18} height={18} alt='badge' />
+                                    <TeamText>{homeTeam}</TeamText>
+                                </TeamBlock>
+                                <Odd>1.85</Odd>
+                                <Odd>3.50</Odd>
+                                <Odd>4.20</Odd>
+                                <ScoreHalf>{homeScore || '0'}</ScoreHalf>
+                            </InnerAlt>
+                            <InnerAlt>
+                                <TeamBlock>
+                                    <Badge src={awayImage} width={18} height={18} alt='badge' />
+                                    <TeamText>{awayTeam}</TeamText>
+                                </TeamBlock>
+                                <Odd>3.85</Odd>
+                                <Odd>0.50</Odd>
+                                <Odd>1.20</Odd>
+                                <ScoreHalf>{awayScore || '0'}</ScoreHalf>
+                            </InnerAlt>
+                        </ScoreInfo>
+                    </Bottom>
+                </Content>
+            </Component>
+        );
+    }
+    if (status === 'cancelled') {
+        return (
+            <Component>
+                <Content>
+                    <Bottom>
+                        <Inner>
+                            <Date>Cancelled</Date>
+                            <OddSign>1</OddSign>
+                            <OddSign>X</OddSign>
+                            <OddSign>2</OddSign>
+                        </Inner>
+                  
+                        <ScoreInfo>
+                            <Inner>
+                                <TeamBlock>
+                                    <Badge src={homeImage} width={18} height={18} alt='badge' />
+                                    <TeamText>{homeTeam}</TeamText>
+                                </TeamBlock>
+                                <Odd>-</Odd>
+                                <Odd>-</Odd>
+                                <Odd>-</Odd>
+                            </Inner>
+                            <Inner>
+                                <TeamBlock>
+                                    <Badge src={awayImage} width={18} height={18} alt='badge' />
+                                    <TeamText>{awayTeam}</TeamText>
+                                </TeamBlock>
+                                <Odd>-</Odd>
+                                <Odd>-</Odd>
+                                <Odd>-</Odd>
+                            </Inner>
+                        </ScoreInfo>
+                    </Bottom>
+                </Content>
+            </Component>
+        );
+    }
+    if (status === 'postponed') {
+        return (
+            <Component>
+                <Content>
+                    <Bottom>
+                        <Inner>
+                            <Date>Postponed</Date>
+                            <OddSign>1</OddSign>
+                            <OddSign>X</OddSign>
+                            <OddSign>2</OddSign>
+                        </Inner>
+                  
+                        <ScoreInfo>
+                            <Inner>
+                                <TeamBlock>
+                                    <Badge src={homeImage} width={18} height={18} alt='badge' />
+                                    <TeamText>{homeTeam}</TeamText>
+                                </TeamBlock>
+                                <Odd>-</Odd>
+                                <Odd>-</Odd>
+                                <Odd>-</Odd>
+                            </Inner>
+                            <Inner>
+                                <TeamBlock>
+                                    <Badge src={awayImage} width={18} height={18} alt='badge' />
+                                    <TeamText>{awayTeam}</TeamText>
+                                </TeamBlock>
+                                <Odd>-</Odd>
+                                <Odd>-</Odd>
+                                <Odd>-</Odd>
+                            </Inner>
+                        </ScoreInfo>
+                    </Bottom>
+                </Content>
+            </Component>
+        );
+    }
+};
+
+export default OddScoreItem;

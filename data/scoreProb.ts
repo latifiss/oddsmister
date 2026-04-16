@@ -1,0 +1,38 @@
+export const scoreData = [
+  { home: 1, away: 1, probability: 12.5 },
+  { home: 1, away: 0, probability: 10.8 },
+  { home: 0, away: 0, probability: 9.2 },
+  { home: 2, away: 1, probability: 8.7 },
+  { home: 0, away: 1, probability: 7.4 },
+  { home: 2, away: 0, probability: 6.9 },
+  { home: 1, away: 2, probability: 5.8 },
+  { home: 2, away: 2, probability: 5.2 },
+  { home: 0, away: 2, probability: 4.6 },
+  { home: 3, away: 1, probability: 3.9 },
+  { home: 1, away: 3, probability: 3.5 },
+  { home: 3, away: 0, probability: 3.1 },
+  { home: 0, away: 3, probability: 2.8 },
+  { home: 2, away: 3, probability: 2.4 },
+  { home: 3, away: 2, probability: 2.1 },
+  { home: 3, away: 3, probability: 1.8 },
+  { home: 4, away: 0, probability: 1.4 },
+  { home: 0, away: 4, probability: 1.2 },
+  { home: 4, away: 1, probability: 1.0 },
+  { home: 1, away: 4, probability: 0.9 },
+  { home: 4, away: 2, probability: 0.7 },
+  { home: 2, away: 4, probability: 0.6 },
+  { home: 4, away: 3, probability: 0.5 },
+  { home: 3, away: 4, probability: 0.4 },
+  { home: 4, away: 4, probability: 0.3 },
+  { home: 5, away: 0, probability: 0.2 },
+  { home: 0, away: 5, probability: 0.1 }
+]
+
+export const probData = [
+  { line: 0.5, overProbability: 72, underProbability: 28 },
+  { line: 1.5, overProbability: 58, underProbability: 42 },
+  { line: 2.5, overProbability: 45, underProbability: 55 },
+  { line: 3.5, overProbability: 31, underProbability: 69 },
+  { line: 4.5, overProbability: 18, underProbability: 82 },
+  { line: 5.5, overProbability: 9, underProbability: 91 },
+]
