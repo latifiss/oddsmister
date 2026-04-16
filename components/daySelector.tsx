@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { IoChevronBack, IoChevronForward } from 'react-icons/io5';
 
@@ -67,6 +67,12 @@ interface DaySelectorProps {
 
 const DaySelector: React.FC<DaySelectorProps> = ({ onDayChange, selectedDate }) => {
   const [selectedDay, setSelectedDay] = useState<Date>(selectedDate || new Date());
+
+  useEffect(() => {
+    if (selectedDate) {
+      setSelectedDay(selectedDate);
+    }
+  }, [selectedDate]);
 
   const formatDate = (date: Date) => {
     const today = new Date();

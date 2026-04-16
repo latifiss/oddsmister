@@ -33,6 +33,7 @@ const TabComponent = styled.div<{ $isActive: boolean; $tabType: string }>`
   padding: 0 12px 0 8px;
   height: 40px;
   width: fit-content;
+  outline: none;
   cursor: pointer;
   text-decoration: none;
   border: 1px solid ${({ theme }) => theme.colors.border};

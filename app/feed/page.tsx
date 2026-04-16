@@ -89,7 +89,9 @@ const VerticalTabComponent = styled.div<{ $isActive: boolean }>`
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
-`
+    background-color: ${({ $isActive, theme }) =>
+        $isActive ? theme.colors.dust : theme.colors.background};
+`;
 
 const VerticalTabImage = styled.div`
     position: relative;
@@ -109,7 +111,7 @@ const VerticalTabText = styled.span<{ $isActive: boolean }>`
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-`
+`;
 
 const FeedColumn = styled.div`
     display: flex;
@@ -327,6 +329,7 @@ const Page = () => {
     const [isDesktop, setIsDesktop] = useState(false);
     const [themeKey, setThemeKey] = useState(0);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const [selectedCompetition, setSelectedCompetition] = useState<string | null>(null);
 
     useEffect(() => {
         const handleThemeChange = () => {
@@ -355,7 +358,11 @@ const Page = () => {
 
     const handleDayChange = (date: Date) => {
         setSelectedDate(date);
-        console.log('Selected date:', date);
+        setSelectedCompetition(null);
+    };
+
+    const handleCompetitionSelect = (competition: string) => {
+        setSelectedCompetition(competition);
     };
 
     return (
@@ -366,20 +373,21 @@ const Page = () => {
                         <Sidebar>
                             <VerticalTabList>
                                 {tabs.map((tab) => (
-                                    <DesktopTab
-                                        key={tab.label}
-                                        label={tab.label}
-                                        isActive={pathname === tab.href}
-                                        href={tab.href}
-                                        imageName={tab.imageName}
-                                    />
+                                    <div key={tab.label} onClick={() => handleCompetitionSelect(tab.label)}>
+                                        <DesktopTab
+                                            label={tab.label}
+                                            isActive={selectedCompetition === tab.label}
+                                            href="#"
+                                            imageName={tab.imageName}
+                                        />
+                                    </div>
                                 ))}
                             </VerticalTabList>
                         </Sidebar>
 
                         <FeedColumn>
                             <DaySelector onDayChange={handleDayChange} selectedDate={selectedDate} />
-                            <Feed />
+                            <Feed selectedDate={selectedDate} selectedCompetition={selectedCompetition} />
                         </FeedColumn>
 
                         <RightColumn>
@@ -399,17 +407,18 @@ const Page = () => {
                             <FeedContainer>
                                 <MobileTabRow>
                                     {tabs.map((tab) => (
-                                        <Tab
-                                            key={tab.label}
-                                            label={tab.label}
-                                            isActive={pathname === tab.href}
-                                            href={tab.href}
-                                            TabImage={`/assets/competitions/${tab.imageName}.png`}
-                                        />
+                                        <div key={tab.label} onClick={() => handleCompetitionSelect(tab.label)}>
+                                            <Tab
+                                                label={tab.label}
+                                                isActive={selectedCompetition === tab.label}
+                                                href="#"
+                                                TabImage={`/assets/competitions/${tab.imageName}.png`}
+                                            />
+                                        </div>
                                     ))}
                                 </MobileTabRow>
                                 <DaySelector onDayChange={handleDayChange} selectedDate={selectedDate} />
-                                <Feed />
+                                <Feed selectedDate={selectedDate} selectedCompetition={selectedCompetition} />
                             </FeedContainer>
                         )}
                         {activeTab === 'predictions' && (

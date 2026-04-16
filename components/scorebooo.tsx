@@ -52,7 +52,7 @@ const Content = styled.div`
   width: 100%;
   align-items: flex-start;
   gap: 1px;
-  padding: 0px 0px;
+  padding: 0px 12px;
 `;
 
 const MarkerRow = styled.div<{ $scale?: number }>`
@@ -82,89 +82,27 @@ const Block = styled.div`
   justify-items: center;
   gap: 8px;
   margin-top: 8px;
-  padding: 0px 12px;
 `;
 
-const InnerAlt = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  width: 100%;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding: 8px 12px 0px 12px;
-  border-top: 1px solid ${({ theme }) => theme.colors.border};
-`;
-
-const Odd = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  min-width: 80px;
-  height: 32px;
-  padding: 0 12px;
-  margin: 0 auto;
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: 8px;
+const Date = styled.span`
   font-size: 12px;
-  font-weight: 700;
-  line-height: 16px;
-  color: ${({ theme }) => theme.colors.text};
-  font-family: inherit;
-  text-decoration: none;
-  white-space: nowrap;
-  text-align: center;
-  background: ${({ theme }) => theme.colors.background};
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    border-color: ${({ theme }) => theme.colors.text};
-    background: ${({ theme }) => theme.colors.fade};
-  }
-`;
-
-const OddSign = styled.span`
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 16px;
-  color: ${({ theme }) => theme.colors.selectText};
-  font-family: inherit;
-  text-decoration: none;
-  white-space: nowrap;
-  text-align: center;
-`;
-
-const StatusText = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-`;
-
-const StatusLine = styled.span`
-  font-size: 10px;
   font-weight: 500;
   line-height: 12px;
   color: ${({ theme }) => theme.colors.grayText};
   font-family: inherit;
   text-decoration: none;
-  text-align: center;
   white-space: nowrap;
+  text-align: center;
+  margin: 0;
 `;
 
 const TeamBlock = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  width: 100%;
-  max-width: 120px;
-  overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
 `
 
 const TeamText = styled.span`
@@ -174,29 +112,26 @@ const TeamText = styled.span`
   color: ${({ theme }) => theme.colors.text};
   font-family: inherit;
   text-decoration: none;
+  white-space: nowrap;
   text-align: center;
   margin-top: 2px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 `;
 
 const Mid = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  margin: 0px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin: 0px 12px;
 `
 
 const Badge = styled(Image)`
-  width: 42px;
-  height: 42px;
-  object-fit: contain;
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
 `
 
-const Score = styled.div<{ $status?: string }>`
+const Score = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -204,12 +139,7 @@ const Score = styled.div<{ $status?: string }>`
   font-size: 24px;
   font-weight: 700;
   line-height: 16px;
-  color: ${({ $status, theme }) => {
-    if ($status === 'live') return theme.colors.hot;
-    if ($status === 'halftime') return '#FFA500';
-    if ($status === 'ended') return theme.colors.grayText;
-    return theme.colors.text;
-  }};
+  color: ${({ theme }) => theme.colors.hot};
   font-family: inherit;
   text-decoration: none;
   white-space: nowrap;
@@ -233,9 +163,6 @@ interface ScoreProps {
   status: MatchStatus;
   minute?: number;
   isSuperboostAvailable?: boolean;
-  homeOdds?: number;
-  drawOdds?: number;
-  awayOdds?: number;
 }
 
 const getMatchStatus = (status: MatchStatus): 'live' | 'ended' | 'not_started' | 'halftime' | 'cancelled' | 'postponed' => {
@@ -260,10 +187,7 @@ const ScoreBoard = ({
   awayScore, 
   status: rawStatus, 
   minute,
-  isSuperboostAvailable = false,
-  homeOdds = (Math.random() * 2 + 1).toFixed(2),
-  drawOdds = (Math.random() * 2 + 2).toFixed(2),
-  awayOdds = (Math.random() * 2 + 1.5).toFixed(2),
+  isSuperboostAvailable = false
 }: ScoreProps) => {
   const status = getMatchStatus(rawStatus);
   
@@ -345,36 +269,6 @@ const ScoreBoard = ({
     );
   };
 
-  const renderOddsRow = () => (
-    <InnerAlt>
-      <Odd>
-        <OddSign>1</OddSign>
-        <span>{homeOdds}</span>
-      </Odd>
-      <Odd>
-        <OddSign>X</OddSign>
-        <span>{drawOdds}</span>
-      </Odd>
-      <Odd>
-        <OddSign>2</OddSign>
-        <span>{awayOdds}</span>
-      </Odd>
-    </InnerAlt>
-  );
-
-  const renderStatusText = (text: string) => {
-    const words = text.split(' ');
-    if (words.length > 1) {
-      return (
-        <StatusText>
-          <StatusLine>{words[0]}</StatusLine>
-          <StatusLine>{words.slice(1).join(' ')}</StatusLine>
-        </StatusText>
-      );
-    }
-    return <StatusLine>{text}</StatusLine>;
-  };
-
   if (status === 'live') {
     return (
       <Component href={`/match/${fixtureId}`}>
@@ -384,19 +278,18 @@ const ScoreBoard = ({
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
-                <TeamText title={homeTeam}>{homeTeam}</TeamText>
+                <TeamText>{homeTeam}</TeamText>
               </TeamBlock>
-              <Score $status="live">{homeScore || '0'}</Score>
+              <Score>{homeScore || '0'}</Score>
               <Mid>
                 <ScoreTimerVertical minute={minute || 55} />
               </Mid>
-              <Score $status="live">{awayScore || '0'}</Score>
+              <Score>{awayScore || '0'}</Score>
               <TeamBlock>
                 <Badge src={awayImage} width={42} height={42} alt='badge' />
-                <TeamText title={awayTeam}>{awayTeam}</TeamText>
+                <TeamText>{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
-            {renderOddsRow()}
           </Bottom>
         </Content>
       </Component>
@@ -412,22 +305,18 @@ const ScoreBoard = ({
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
-                <TeamText title={homeTeam}>{homeTeam}</TeamText>
+                <TeamText>{homeTeam}</TeamText>
               </TeamBlock>
-              <Score $status="not_started"></Score>
+              <Score>-</Score>
               <Mid>
-                <StatusText>
-                  <StatusLine>{date}</StatusLine>
-                  <StatusLine>{time}</StatusLine>
-                </StatusText>
+                <Date>{date} • {time}</Date>
               </Mid>
-              <Score $status="not_started"></Score>
+              <Score>-</Score>
               <TeamBlock>
                 <Badge src={awayImage} width={42} height={42} alt='badge' />
-                <TeamText title={awayTeam}>{awayTeam}</TeamText>
+                <TeamText>{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
-            {renderOddsRow()}
           </Bottom>
         </Content>
       </Component>
@@ -443,19 +332,18 @@ const ScoreBoard = ({
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
-                <TeamText title={homeTeam}>{homeTeam}</TeamText>
+                <TeamText>{homeTeam}</TeamText>
               </TeamBlock>
-              <Score $status="halftime">{homeScore || '0'}</Score>
+              <Score>{homeScore || '0'}</Score>
               <Mid>
                 <ScoreTimerVertical minute={45} isHalftime={true} />
               </Mid>
-              <Score $status="halftime">{awayScore || '0'}</Score>
+              <Score>{awayScore || '0'}</Score>
               <TeamBlock>
                 <Badge src={awayImage} width={42} height={42} alt='badge' />
-                <TeamText title={awayTeam}>{awayTeam}</TeamText>
+                <TeamText>{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
-            {renderOddsRow()}
           </Bottom>
         </Content>
       </Component>
@@ -471,16 +359,16 @@ const ScoreBoard = ({
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
-                <TeamText title={homeTeam}>{homeTeam}</TeamText>
+                <TeamText>{homeTeam}</TeamText>
               </TeamBlock>
-              <Score $status="ended">{homeScore || '0'}</Score>
+              <Score>{homeScore || '0'}</Score>
               <Mid>
                 <ScoreTimerVertical minute={90} isFulltime={true} />
               </Mid>
-              <Score $status="ended">{awayScore || '0'}</Score>
+              <Score>{awayScore || '0'}</Score>
               <TeamBlock>
                 <Badge src={awayImage} width={42} height={42} alt='badge' />
-                <TeamText title={awayTeam}>{awayTeam}</TeamText>
+                <TeamText>{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
           </Bottom>
@@ -498,16 +386,16 @@ const ScoreBoard = ({
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
-                <TeamText title={homeTeam}>{homeTeam}</TeamText>
+                <TeamText>{homeTeam}</TeamText>
               </TeamBlock>
-              <Score $status="cancelled"></Score>
+              <Score>-</Score>
               <Mid>
-                {renderStatusText('Cancelled')}
+                <Date>Cancelled</Date>
               </Mid>
-              <Score $status="cancelled"></Score>
+              <Score>-</Score>
               <TeamBlock>
                 <Badge src={awayImage} width={42} height={42} alt='badge' />
-                <TeamText title={awayTeam}>{awayTeam}</TeamText>
+                <TeamText>{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
           </Bottom>
@@ -525,16 +413,16 @@ const ScoreBoard = ({
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
-                <TeamText title={homeTeam}>{homeTeam}</TeamText>
+                <TeamText>{homeTeam}</TeamText>
               </TeamBlock>
-              <Score $status="postponed"></Score>
+              <Score>-</Score>
               <Mid>
-                {renderStatusText('Postponed')}
+                <Date>Postponed</Date>
               </Mid>
-              <Score $status="postponed"></Score>
+              <Score>-</Score>
               <TeamBlock>
                 <Badge src={awayImage} width={42} height={42} alt='badge' />
-                <TeamText title={awayTeam}>{awayTeam}</TeamText>
+                <TeamText>{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
           </Bottom>
