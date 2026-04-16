@@ -9,9 +9,8 @@ import Superboost from './superboost';
 import HotTag from './hotTag';
 import BestOddTag from './bestOddTag';
 import WinProbabilityMeter from './charts/winProbabilityMeter';
-import CorrectScoreHeatmap from './charts/correctScoreHeatmap';
-import { scoreData } from '@/data/scoreProb';
 import GoalLineProbability from './charts/goalLine';
+import DualGaugeChart from './charts/dualGuage';
 
 const Component = styled.div`
   display: flex;
@@ -80,18 +79,9 @@ const IQContainer = styled.div`
     margin-top: 12px;
 `
 
-const Inner = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 45px 45px 45px;
-  width: 100%;
-  align-items: flex-start;
-  gap: 8px;
-  margin-top: 8px;
-`;
-
 const Block = styled.div`
   display: grid;
-  grid-template-columns: 1fr 15px 45px 15px 1fr;
+  grid-template-columns: minmax(0, 1fr) 15px 45px 15px minmax(0, 1fr);
   width: 100%;
   align-items: center;
   gap: 8px;
@@ -154,6 +144,8 @@ const HomeTeamBlock = styled.div`
     justify-content: flex-start;
     gap: 7px;
     width: 100%;
+    min-width: 0;
+    flex: 1;
 `
 
 const AwayTeamBlock = styled.div`
@@ -162,6 +154,8 @@ const AwayTeamBlock = styled.div`
     justify-content: flex-end;
     gap: 7px;
     width: 100%;
+    min-width: 0;
+    flex: 1;
 `
 
 const HomeTeamText = styled.span`
@@ -171,9 +165,12 @@ const HomeTeamText = styled.span`
   color: ${({ theme }) => theme.colors.text};
   font-family: inherit;
   text-decoration: none;
-  white-space: nowrap;
   text-align: left;
   margin-top: 2px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const AwayTeamText = styled.span`
@@ -183,9 +180,12 @@ const AwayTeamText = styled.span`
   color: ${({ theme }) => theme.colors.text};
   font-family: inherit;
   text-decoration: none;
-  white-space: nowrap;
   text-align: right;
   margin-top: 2px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const Mid = styled.div`
@@ -200,6 +200,7 @@ const Badge = styled(Image)`
     width: 18px;
     height: 18px;
     object-fit: contain;
+    flex-shrink: 0;
 `
 
 const Odd = styled.div`
@@ -268,9 +269,30 @@ display: flex;
   text-align: center;
 `
 
+const StatusContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+`;
+
+const StatusLine = styled.span`
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 12px;
+  color: ${({ theme }) => theme.colors.grayText};
+  font-family: inherit;
+  text-decoration: none;
+  text-align: center;
+  white-space: nowrap;
+`;
+
 type MatchStatus = 'live' | 'ended' | 'not_started' | 'cancelled' | 'postponed' | 'finished' | 'halftime';
+type ChartType = 'winProbability' | 'goalLine' | 'dualGauge';
 
 interface ScoreProps {
+  fixtureId: number;
   homeTeam: string;
   awayTeam: string;
   homeImage: string;
@@ -285,9 +307,20 @@ interface ScoreProps {
   isActive: boolean;
   minute?: number;
   isSuperboostAvailable?: boolean;
+  chartType?: ChartType;
+  prediction?: any;
 }
 
+const getMatchStatus = (status: string): MatchStatus => {
+  if (status === '1H' || status === '2H') return 'live';
+  if (status === 'HT') return 'halftime';
+  if (status === 'FT') return 'ended';
+  if (status === 'NS') return 'not_started';
+  return 'not_started';
+};
+
 const PredictionScoreItem = ({ 
+  fixtureId,
   homeTeam, 
   awayTeam, 
   homeImage, 
@@ -296,14 +329,27 @@ const PredictionScoreItem = ({
   time, 
   homeScore, 
   awayScore, 
-  homeRedCard = 0, 
-  awayRedCard = 0, 
-  status, 
-  isActive, 
+  status: rawStatus, 
   minute,
-  isSuperboostAvailable = false
+  isSuperboostAvailable = false,
+  chartType,
+  prediction
 }: ScoreProps) => {
+  const status = getMatchStatus(rawStatus);
   
+  const renderStatusText = (text: string) => {
+    const words = text.split(' ');
+    if (words.length > 1) {
+      return (
+        <StatusContainer>
+          <StatusLine>{words[0]}</StatusLine>
+          <StatusLine>{words.slice(1).join(' ')}</StatusLine>
+        </StatusContainer>
+      );
+    }
+    return <StatusLine>{text}</StatusLine>;
+  };
+
   const getLeftTag = () => {
     const random = Math.random();
     
@@ -384,55 +430,60 @@ const PredictionScoreItem = ({
 
   const renderOddsRow = () => (
     <InnerAlt>
-      <Odd>{(Math.random() * 2 + 1).toFixed(2)}</Odd>
-      <Odd>{(Math.random() * 2 + 2).toFixed(2)}</Odd>
-      <Odd>{(Math.random() * 2 + 1.5).toFixed(2)}</Odd>
+      <Odd>{prediction?.comparison?.odds?.[0] || (Math.random() * 2 + 1).toFixed(2)}</Odd>
+      <Odd>{prediction?.comparison?.odds?.[1] || (Math.random() * 2 + 2).toFixed(2)}</Odd>
+      <Odd>{prediction?.comparison?.odds?.[2] || (Math.random() * 2 + 1.5).toFixed(2)}</Odd>
     </InnerAlt>
   );
 
-  if (status === 'live') {
-    return (
-      <Component>
-        {renderHeader()}
-        <Content>
-          <Bottom>
-            <Block>
-              <HomeTeamBlock>
-                <Badge src={homeImage} width={18} height={18} alt='badge' />
-                <HomeTeamText>{homeTeam}</HomeTeamText>
-              </HomeTeamBlock>
-              <Score>{homeScore || '0'}</Score>
-              <Mid>
-                <ScoreTimerVertical minute={minute || 55} />
-              </Mid>
-              <Score>{awayScore || '0'}</Score>
-              <AwayTeamBlock>
-                <AwayTeamText>{awayTeam}</AwayTeamText>
-                <Badge src={awayImage} width={18} height={18} alt='badge' />
-              </AwayTeamBlock>
-            </Block>
-            <ScoreInfo>
-              <InnerAlt>
-                <OddSign>1</OddSign>
-                <OddSign>X</OddSign>
-                <OddSign>2</OddSign>
-              </InnerAlt>
-              {renderOddsRow()}
-                    </ScoreInfo>
-                    <IQContainer>
-                    <CorrectScoreHeatmap 
-  data={scoreData}
-  homeTeam="Arsenal"
-  awayTeam="Chelsea"
-  homeBadge="https://img.sofascore.com/api/v1/team/42/image"
-  awayBadge="https://img.sofascore.com/api/v1/team/43/image"
-/>
-                </IQContainer>
-          </Bottom>
-        </Content>
-      </Component>
-    );
-  }
+  const renderChart = () => {
+    if (!chartType) return null;
+
+    switch (chartType) {
+      case 'winProbability':
+        return (
+          <IQContainer>
+            <WinProbabilityMeter 
+              homeProbability={prediction?.predictions?.win_percentage || 45}
+              awayProbability={prediction?.predictions?.lose_percentage || 35}
+              drawProbability={prediction?.predictions?.draw_percentage || 20}
+              homeTeam={homeTeam}
+              awayTeam={awayTeam}
+              homeColor="#ef0107"
+              awayColor="#034694"
+              homeBadge={homeImage}
+              awayBadge={awayImage}
+            />
+          </IQContainer>
+        );
+      
+      case 'goalLine':
+        return (
+          <IQContainer>
+            <GoalLineProbability 
+              overProbability={prediction?.predictions?.goals?.over_percentage || 45}
+              underProbability={prediction?.predictions?.goals?.under_percentage || 55}
+            />
+          </IQContainer>
+        );
+      
+      case 'dualGauge':
+        return (
+          <IQContainer>
+            <DualGaugeChart 
+              overProbability={prediction?.predictions?.goals?.over_percentage || 45}
+              underProbability={prediction?.predictions?.goals?.under_percentage || 55}
+              homeTeam={homeTeam}
+              awayTeam={awayTeam}
+              title="Over / Under Goals Probability"
+            />
+          </IQContainer>
+        );
+      
+      default:
+        return null;
+    }
+  };
 
   if (status === 'not_started') {
     return (
@@ -443,15 +494,18 @@ const PredictionScoreItem = ({
             <Block>
               <HomeTeamBlock>
                 <Badge src={homeImage} width={18} height={18} alt='badge' />
-                <HomeTeamText>{homeTeam}</HomeTeamText>
+                <HomeTeamText title={homeTeam}>{homeTeam}</HomeTeamText>
               </HomeTeamBlock>
-              <Score>-</Score>
+              <Score> </Score>
               <Mid>
-                <Date>{date} • {time}</Date>
+                <StatusContainer>
+                  <StatusLine>{date}</StatusLine>
+                  <StatusLine>{time}</StatusLine>
+                </StatusContainer>
               </Mid>
-              <Score>-</Score>
+              <Score> </Score>
               <AwayTeamBlock>
-                <AwayTeamText>{awayTeam}</AwayTeamText>
+                <AwayTeamText title={awayTeam}>{awayTeam}</AwayTeamText>
                 <Badge src={awayImage} width={18} height={18} alt='badge' />
               </AwayTeamBlock>
             </Block>
@@ -463,91 +517,7 @@ const PredictionScoreItem = ({
               </InnerAlt>
               {renderOddsRow()}
             </ScoreInfo>
-                </Bottom>
-                <IQContainer>
-                    <WinProbabilityMeter 
-                      homeProbability={58}
-                      awayProbability={25}
-                      drawProbability={17}
-                      homeTeam="Arsenal"
-                      awayTeam="Chelsea"
-                      homeColor="#ef0107"
-                      awayColor="#034694"
-                      homeBadge="https://img.sofascore.com/api/v1/team/42/image"
-                      awayBadge="https://img.sofascore.com/api/v1/team/43/image"
-                            />
-                </IQContainer>
-        </Content>
-      </Component>
-    );
-  }
-
-  if (status === 'halftime') {
-    return (
-      <Component>
-        <Content>
-          <Bottom>
-            <Block>
-              <HomeTeamBlock>
-                <Badge src={homeImage} width={18} height={18} alt='badge' />
-                <HomeTeamText>{homeTeam}</HomeTeamText>
-              </HomeTeamBlock>
-              <ScoreHalf>{homeScore || '0'}</ScoreHalf>
-              <Mid>
-                <ScoreTimerVertical minute={45} isHalftime={true} />
-              </Mid>
-              <ScoreHalf>{awayScore || '0'}</ScoreHalf>
-              <AwayTeamBlock>
-                <AwayTeamText>{awayTeam}</AwayTeamText>
-                <Badge src={awayImage} width={18} height={18} alt='badge' />
-              </AwayTeamBlock>
-            </Block>
-            <ScoreInfo>
-              <InnerAlt>
-                <OddSign>1</OddSign>
-                <OddSign>X</OddSign>
-                <OddSign>2</OddSign>
-              </InnerAlt>
-              {renderOddsRow()}
-            </ScoreInfo>
-          </Bottom>
-        </Content>
-      </Component>
-    );
-  }
-
-  if (status === 'ended' || status === 'finished') {
-    return (
-      <Component>
-        <Content>
-          <Bottom>
-            <Block>
-              <HomeTeamBlock>
-                <Badge src={homeImage} width={18} height={18} alt='badge' />
-                <HomeTeamText>{homeTeam}</HomeTeamText>
-              </HomeTeamBlock>
-              <ScoreEnd>{homeScore || '0'}</ScoreEnd>
-              <Mid>
-                <ScoreTimerVertical minute={90} isFulltime={true} />
-              </Mid>
-              <ScoreEnd>{awayScore || '0'}</ScoreEnd>
-              <AwayTeamBlock>
-                <AwayTeamText>{awayTeam}</AwayTeamText>
-                <Badge src={awayImage} width={18} height={18} alt='badge' />
-              </AwayTeamBlock>
-            </Block>
-            <ScoreInfo>
-              <InnerAlt>
-                <OddSign>1</OddSign>
-                <OddSign>X</OddSign>
-                <OddSign>2</OddSign>
-              </InnerAlt>
-              <InnerAlt>
-                <Odd>{homeScore ? (parseFloat(homeScore) * 0.5).toFixed(2) : '0.00'}</Odd>
-                <Odd>-</Odd>
-                <Odd>{awayScore ? (parseFloat(awayScore) * 0.8).toFixed(2) : '0.00'}</Odd>
-              </InnerAlt>
-            </ScoreInfo>
+            {renderChart()}
           </Bottom>
         </Content>
       </Component>
@@ -562,37 +532,19 @@ const PredictionScoreItem = ({
             <Block>
               <HomeTeamBlock>
                 <Badge src={homeImage} width={18} height={18} alt='badge' />
-                <HomeTeamText>{homeTeam}</HomeTeamText>
+                <HomeTeamText title={homeTeam}>{homeTeam}</HomeTeamText>
               </HomeTeamBlock>
-              <Score>-</Score>
+              <Score> </Score>
               <Mid>
-                <Date>Cancelled</Date>
+                {renderStatusText('Cancelled')}
               </Mid>
-              <Score>-</Score>
+              <Score> </Score>
               <AwayTeamBlock>
-                <AwayTeamText>{awayTeam}</AwayTeamText>
+                <AwayTeamText title={awayTeam}>{awayTeam}</AwayTeamText>
                 <Badge src={awayImage} width={18} height={18} alt='badge' />
               </AwayTeamBlock>
             </Block>
-            <ScoreInfo>
-              <InnerAlt>
-                <OddSign>1</OddSign>
-                <OddSign>X</OddSign>
-                <OddSign>2</OddSign>
-              </InnerAlt>
-              <InnerAlt>
-                <Odd>-</Odd>
-                <Odd>-</Odd>
-                <Odd>-</Odd>
-              </InnerAlt>
-            </ScoreInfo>
-                </Bottom>
-                <IQContainer>
-                    <GoalLineProbability 
-        overProbability={45}
-        underProbability={55}
-      />
-                </IQContainer>
+          </Bottom>
         </Content>
       </Component>
     );
@@ -606,30 +558,18 @@ const PredictionScoreItem = ({
             <Block>
               <HomeTeamBlock>
                 <Badge src={homeImage} width={18} height={18} alt='badge' />
-                <HomeTeamText>{homeTeam}</HomeTeamText>
+                <HomeTeamText title={homeTeam}>{homeTeam}</HomeTeamText>
               </HomeTeamBlock>
-              <Score>-</Score>
+              <Score> </Score>
               <Mid>
-                <Date>Postponed</Date>
+                {renderStatusText('Postponed')}
               </Mid>
-              <Score>-</Score>
+              <Score> </Score>
               <AwayTeamBlock>
-                <AwayTeamText>{awayTeam}</AwayTeamText>
+                <AwayTeamText title={awayTeam}>{awayTeam}</AwayTeamText>
                 <Badge src={awayImage} width={18} height={18} alt='badge' />
               </AwayTeamBlock>
             </Block>
-            <ScoreInfo>
-              <InnerAlt>
-                <OddSign>1</OddSign>
-                <OddSign>X</OddSign>
-                <OddSign>2</OddSign>
-              </InnerAlt>
-              <InnerAlt>
-                <Odd>-</Odd>
-                <Odd>-</Odd>
-                <Odd>-</Odd>
-              </InnerAlt>
-            </ScoreInfo>
           </Bottom>
         </Content>
       </Component>
