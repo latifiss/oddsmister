@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useMemo } from 'react'
 import styled from 'styled-components'
 import * as d3 from 'd3'
 
-/* ===== Types ===== */
 interface DataPoint {
   time: Date
   value: number
@@ -19,7 +18,6 @@ interface OddHistoryProps {
   timeLabel?: string
 }
 
-/* ===== Styled Components ===== */
 const Wrapper = styled.div`
   display: inline-flex;
   flex-direction: column;
@@ -72,7 +70,6 @@ const LegendLabel = styled.span`
   font-family: inherit;
 `
 
-/* ===== Default Demo Data ===== */
 function generateDefaultData(): DataPoint[] {
   const base = new Date('2024-03-24T00:00:00')
   const raw = [
@@ -84,7 +81,6 @@ function generateDefaultData(): DataPoint[] {
   }))
 }
 
-/* ===== Component ===== */
 const OddHistory: React.FC<OddHistoryProps> = ({
   data,
   width = 280,
@@ -109,7 +105,6 @@ const OddHistory: React.FC<OddHistoryProps> = ({
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`)
 
-    /* ── Scales ── */
     const xExtent = d3.extent(resolvedData, d => d.time) as [Date, Date]
     const yExtent = d3.extent(resolvedData, d => d.value) as [number, number]
     const yPad = (yExtent[1] - yExtent[0]) * 0.15
@@ -120,7 +115,6 @@ const OddHistory: React.FC<OddHistoryProps> = ({
       .domain([yExtent[0] - yPad, yExtent[1] + yPad])
       .range([innerH, 0])
 
-    /* ── Grid lines ── */
     const yTicks = yScale.ticks(4)
     g.selectAll('.grid-line')
       .data(yTicks)
@@ -135,7 +129,6 @@ const OddHistory: React.FC<OddHistoryProps> = ({
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', '3,3')
 
-    /* ── Y Axis with alternating visibility ── */
     yTicks.forEach((tick, index) => {
       const shouldShowLabel = index % 2 === 0
       
@@ -152,7 +145,6 @@ const OddHistory: React.FC<OddHistoryProps> = ({
       }
     })
 
-    /* ── X Axis labels (just start + end) ── */
     const firstDate = resolvedData[0].time
     const xDateLabel = d3.timeFormat('%b %-d')(firstDate)
 

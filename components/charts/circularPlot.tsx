@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useMemo } from 'react'
 import styled from 'styled-components'
 import * as d3 from 'd3'
 
-/* ===== Types ===== */
 interface DataPoint {
   country: string
   value: number
@@ -20,7 +19,6 @@ interface CircularBarplotProps {
   title?: string
 }
 
-/* ===== Styled Components ===== */
 const Wrapper = styled.div`
   display: inline-flex;
   flex-direction: column;
@@ -56,7 +54,6 @@ const Title = styled.div`
   font-family: inherit;
 `
 
-/* ===== Default Demo Data ===== */
 function generateDefaultData(): DataPoint[] {
   return [
     { country: 'USA', value: 8500 },
@@ -72,7 +69,6 @@ function generateDefaultData(): DataPoint[] {
   ]
 }
 
-/* ===== Component ===== */
 const CircularBarplot: React.FC<CircularBarplotProps> = ({
   data,
   width = 460,
@@ -90,7 +86,6 @@ const CircularBarplot: React.FC<CircularBarplotProps> = ({
   const innerH = height - margin.top - margin.bottom
   const outerRadius = customOuterRadius || Math.min(innerW, innerH) / 2
 
-  // Custom radial scale function
   const getRadialScale = (value: number, maxValue: number) => {
     return innerRadius + (value / maxValue) * (outerRadius - innerRadius)
   }
@@ -105,16 +100,13 @@ const CircularBarplot: React.FC<CircularBarplotProps> = ({
       .append('g')
       .attr('transform', `translate(${innerW / 2}, ${innerH / 2 + 60})`)
 
-    // X scale (band scale for circular layout)
     const x = d3.scaleBand()
       .range([0, 2 * Math.PI])
       .align(0)
       .domain(resolvedData.map(d => d.country))
 
-    // Get max value for scaling
     const maxValue = d3.max(resolvedData, d => d.value) || 10000
 
-    // Add background circles (grid)
     const gridLevels = [25, 50, 75, 100]
     gridLevels.forEach(level => {
       const radius = getRadialScale((maxValue * level) / 100, maxValue)
@@ -128,7 +120,6 @@ const CircularBarplot: React.FC<CircularBarplotProps> = ({
         .attr('stroke-width', 0.8)
         .attr('stroke-dasharray', '4,4')
 
-      // Add grid labels
       g.append('text')
         .attr('x', 5)
         .attr('y', -radius)
@@ -139,7 +130,6 @@ const CircularBarplot: React.FC<CircularBarplotProps> = ({
         .text(`${level}%`)
     })
 
-    // Add bars
     g.selectAll('path')
       .data(resolvedData)
       .enter()
@@ -161,7 +151,6 @@ const CircularBarplot: React.FC<CircularBarplotProps> = ({
         } as any) || ''
       })
 
-    // Add value labels on the bars
     g.selectAll('.bar-label')
       .data(resolvedData)
       .enter()
@@ -181,7 +170,6 @@ const CircularBarplot: React.FC<CircularBarplotProps> = ({
       .style('font-weight', '500')
       .text((d: DataPoint) => d.value.toLocaleString())
 
-    // Add country labels at the outer edge
     g.selectAll('.country-label')
       .data(resolvedData)
       .enter()
@@ -205,7 +193,6 @@ const CircularBarplot: React.FC<CircularBarplotProps> = ({
       .style('font-weight', '500')
       .text((d: DataPoint) => d.country)
 
-    // Add inner circle center label
     g.append('text')
       .attr('x', 0)
       .attr('y', 0)

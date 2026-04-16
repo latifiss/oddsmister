@@ -8,10 +8,6 @@ import ScoreTimerVertical from './scoreTimerVertical';
 import Superboost from './superboost';
 import HotTag from './hotTag';
 import BestOddTag from './bestOddTag';
-import WinProbabilityMeter from './charts/winProbabilityMeter';
-import CorrectScoreHeatmap from './charts/correctScoreHeatmap';
-import { scoreData } from '@/data/scoreProb';
-import GoalLineProbability from './charts/goalLine';
 
 const Component = styled.div`
   display: flex;

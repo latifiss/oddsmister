@@ -43,7 +43,7 @@ const TeamFormMatches = () => {
             awayImage="https://img.sofascore.com/api/v1/team/35/image"
             homeScore={item.score}
             awayScore="1"
-            result={item.result} // pass result if needed for dynamic bg
+            result={item.result} 
           />
         ))}
       </ScoresWrapper>

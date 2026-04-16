@@ -282,7 +282,7 @@ interface WidgetProps {
   status: MatchStatus;
   isActive: boolean;
   channelName?: string | string[];
-  minute?: number; // for live matches
+  minute?: number; 
 }
 
 const ScoreItem = ({ homeTeam, awayTeam, homeImage, awayImage, time, homeScore, awayScore, homeRedCard = 0, awayRedCard = 0, status, isActive, channelName, minute }: WidgetProps) => {

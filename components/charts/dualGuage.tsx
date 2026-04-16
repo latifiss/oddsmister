@@ -22,7 +22,7 @@ const Wrapper = styled.div`
   gap: 16px;
   padding: 20px;
   border-radius: 16px;
-border: 1px solid ${({ theme }) => theme.colors.border};
+  border: 1px solid ${({ theme }) => theme.colors.border};
   width: 100%;
 `
 
@@ -114,41 +114,35 @@ const DualGaugeChart: React.FC<DualGaugeChartProps> = ({
     const underAngle = (underProbability / 100) * Math.PI
     const overAngle = (overProbability / 100) * Math.PI
 
-    // Under gauge (left)
     const underArc = d3.arc()
       .innerRadius(radius - 25)
       .outerRadius(radius)
       .startAngle(-Math.PI / 2)
       .endAngle(-Math.PI / 2 + underAngle)
 
-    // Over gauge (right)
     const overArc = d3.arc()
       .innerRadius(radius - 25)
       .outerRadius(radius)
       .startAngle(-Math.PI / 2)
       .endAngle(-Math.PI / 2 + overAngle)
 
-    // Background arcs
     const backgroundArc = d3.arc()
       .innerRadius(radius - 25)
       .outerRadius(radius)
       .startAngle(-Math.PI / 2)
       .endAngle(Math.PI / 2)
 
-    // Left gauge background
     svg.append('path')
       .attr('transform', `translate(${centerX - 130}, ${centerY})`)
       .attr('d', backgroundArc() as string)
       .attr('fill', '#f0f0f0')
 
-    // Left gauge fill
     svg.append('path')
       .attr('transform', `translate(${centerX - 130}, ${centerY})`)
       .attr('d', underArc() as string)
       .attr('fill', homeColor)
       .attr('opacity', 0.9)
 
-    // Left gauge center circle
     svg.append('circle')
       .attr('cx', centerX - 130)
       .attr('cy', centerY)
@@ -157,7 +151,6 @@ const DualGaugeChart: React.FC<DualGaugeChartProps> = ({
       .attr('stroke', homeColor)
       .attr('stroke-width', 2)
 
-    // Left gauge percentage text
     svg.append('text')
       .attr('x', centerX - 130)
       .attr('y', centerY + 5)
@@ -168,7 +161,6 @@ const DualGaugeChart: React.FC<DualGaugeChartProps> = ({
       .style('font-family', 'inherit')
       .text(`${underProbability}%`)
 
-    // Left gauge label
     svg.append('text')
       .attr('x', centerX - 130)
       .attr('y', centerY - 25)
@@ -178,20 +170,17 @@ const DualGaugeChart: React.FC<DualGaugeChartProps> = ({
       .style('font-family', 'inherit')
       .text('UNDER 2.5')
 
-    // Right gauge background
     svg.append('path')
       .attr('transform', `translate(${centerX + 130}, ${centerY})`)
       .attr('d', backgroundArc() as string)
       .attr('fill', '#f0f0f0')
 
-    // Right gauge fill
     svg.append('path')
       .attr('transform', `translate(${centerX + 130}, ${centerY})`)
       .attr('d', overArc() as string)
       .attr('fill', awayColor)
       .attr('opacity', 0.9)
 
-    // Right gauge center circle
     svg.append('circle')
       .attr('cx', centerX + 130)
       .attr('cy', centerY)
@@ -200,7 +189,6 @@ const DualGaugeChart: React.FC<DualGaugeChartProps> = ({
       .attr('stroke', awayColor)
       .attr('stroke-width', 2)
 
-    // Right gauge percentage text
     svg.append('text')
       .attr('x', centerX + 130)
       .attr('y', centerY + 5)
@@ -211,7 +199,6 @@ const DualGaugeChart: React.FC<DualGaugeChartProps> = ({
       .style('font-family', 'inherit')
       .text(`${overProbability}%`)
 
-    // Right gauge label
     svg.append('text')
       .attr('x', centerX + 130)
       .attr('y', centerY - 25)
@@ -221,7 +208,6 @@ const DualGaugeChart: React.FC<DualGaugeChartProps> = ({
       .style('font-family', 'inherit')
       .text('OVER 2.5')
 
-    // Add tick marks on both gauges
     const addTickMarks = (x: number, y: number, radius: number, color: string) => {
       for (let i = 0; i <= 4; i++) {
         const angle = -Math.PI / 2 + (i / 4) * Math.PI
@@ -254,13 +240,13 @@ const DualGaugeChart: React.FC<DualGaugeChartProps> = ({
         <GaugeWrapper>
           <GaugeLabel $color={homeColor}>UNDER 2.5 GOALS</GaugeLabel>
           <GaugeValue $color={homeColor}>{underProbability}%</GaugeValue>
-          <GaugeSubLabel>{homeTeam}傾向</GaugeSubLabel>
+          <GaugeSubLabel>{homeTeam}倾向</GaugeSubLabel>
         </GaugeWrapper>
         
         <GaugeWrapper>
           <GaugeLabel $color={awayColor}>OVER 2.5 GOALS</GaugeLabel>
           <GaugeValue $color={awayColor}>{overProbability}%</GaugeValue>
-          <GaugeSubLabel>{awayTeam}傾向</GaugeSubLabel>
+          <GaugeSubLabel>{awayTeam}倾向</GaugeSubLabel>
         </GaugeWrapper>
       </GaugeContainer>
       

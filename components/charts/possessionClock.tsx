@@ -4,7 +4,6 @@ import React, { useEffect, useRef } from 'react'
 import styled from 'styled-components'
 import * as d3 from 'd3'
 
-/* ===== Types ===== */
 interface PossessionClockProps {
   homePercentage?: number
   awayPercentage?: number
@@ -18,7 +17,6 @@ interface PossessionClockProps {
   minute?: number
 }
 
-/* ===== Styled Components ===== */
 const Wrapper = styled.div`
   display: inline-flex;
   flex-direction: column;
@@ -119,7 +117,6 @@ const MinuteText = styled.span`
   font-family: inherit;
 `
 
-/* ===== Component ===== */
 const PossessionClock: React.FC<PossessionClockProps> = ({
   homePercentage = 58,
   awayPercentage = 42,
@@ -134,7 +131,6 @@ const PossessionClock: React.FC<PossessionClockProps> = ({
 }) => {
   const svgRef = useRef<SVGSVGElement>(null)
 
-  // Ensure percentages add to 100
   const homeValue = Math.min(Math.max(homePercentage, 0), 100)
   const awayValue = Math.min(Math.max(awayPercentage, 0), 100 - homeValue)
   const actualHome = homeValue
@@ -152,7 +148,6 @@ const PossessionClock: React.FC<PossessionClockProps> = ({
     const radius = size * 0.35
     const innerRadius = radius * 0.65
 
-    // Create gradient for home side
     const defs = svg.append('defs')
     
     const homeGrad = defs.append('linearGradient')
@@ -171,7 +166,6 @@ const PossessionClock: React.FC<PossessionClockProps> = ({
     awayGrad.append('stop').attr('offset', '0%').attr('stop-color', awayColor).attr('stop-opacity', 0.9)
     awayGrad.append('stop').attr('offset', '100%').attr('stop-color', awayColor).attr('stop-opacity', 0.7)
 
-    // Background circle (base)
     svg.append('circle')
       .attr('cx', centerX)
       .attr('cy', centerY)
@@ -180,11 +174,9 @@ const PossessionClock: React.FC<PossessionClockProps> = ({
       .attr('stroke', '#e0e0e0')
       .attr('stroke-width', 2)
 
-    // Calculate angles (pie chart)
     const homeAngle = (actualHome / 100) * 360
     const awayAngle = 360 - homeAngle
 
-    // Create pie generator
     const pie = d3.pie<number>()
       .startAngle(0)
       .endAngle(2 * Math.PI)
@@ -194,16 +186,13 @@ const PossessionClock: React.FC<PossessionClockProps> = ({
     const data = [actualHome, actualAway]
     const arcs = pie(data)
 
-    // Arc generator
     const arc = d3.arc<d3.PieArcDatum<number>>()
       .innerRadius(innerRadius)
       .outerRadius(radius)
       .cornerRadius(4)
 
-    // Colors for pie slices
     const colors = [`url(#homeGrad)`, `url(#awayGrad)`]
 
-    // Draw pie slices
     svg.selectAll('path')
       .data(arcs)
       .enter()
@@ -215,7 +204,6 @@ const PossessionClock: React.FC<PossessionClockProps> = ({
       .attr('stroke-width', 2)
       .attr('opacity', 0.95)
 
-    // Add inner circle (center)
     svg.append('circle')
       .attr('cx', centerX)
       .attr('cy', centerY)
@@ -224,7 +212,6 @@ const PossessionClock: React.FC<PossessionClockProps> = ({
       .attr('stroke', '#e0e0e0')
       .attr('stroke-width', 1.5)
 
-    // Add center text (possession label)
     svg.append('text')
       .attr('x', centerX)
       .attr('y', centerY - 8)
@@ -235,7 +222,6 @@ const PossessionClock: React.FC<PossessionClockProps> = ({
       .style('font-weight', '500')
       .text('POSSESSION')
 
-    // Add home percentage in center
     svg.append('text')
       .attr('x', centerX)
       .attr('y', centerY + 12)
@@ -246,7 +232,6 @@ const PossessionClock: React.FC<PossessionClockProps> = ({
       .style('font-weight', 'bold')
       .text(`${Math.round(actualHome)}%`)
 
-    // Add small tick marks around the clock (every 10%)
     for (let i = 0; i <= 10; i++) {
       const angle = (i / 10) * 2 * Math.PI - Math.PI / 2
       const innerTickRadius = radius + 5
@@ -265,7 +250,6 @@ const PossessionClock: React.FC<PossessionClockProps> = ({
         .attr('stroke', '#ccc')
         .attr('stroke-width', 1.5)
       
-      // Add percentage labels at ticks
       const labelRadius = radius + 18
       const labelX = centerX + labelRadius * Math.cos(angle)
       const labelY = centerY + labelRadius * Math.sin(angle)
@@ -282,9 +266,7 @@ const PossessionClock: React.FC<PossessionClockProps> = ({
         .text(`${percentValue}%`)
     }
 
-    // Add direction arrow (small indicator showing which team has more possession)
     if (actualHome > 50) {
-      // Arrow pointing clockwise (home dominance)
       const arrowAngle = -Math.PI / 4
       const arrowRadius = radius - 12
       const arrowX = centerX + arrowRadius * Math.cos(arrowAngle)
@@ -298,7 +280,6 @@ const PossessionClock: React.FC<PossessionClockProps> = ({
         .style('fill', homeColor)
         .text('→')
     } else if (actualAway > 50) {
-      // Arrow pointing counter-clockwise (away dominance)
       const arrowAngle = Math.PI / 4
       const arrowRadius = radius - 12
       const arrowX = centerX + arrowRadius * Math.cos(arrowAngle)

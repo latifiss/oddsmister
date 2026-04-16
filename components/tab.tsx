@@ -26,22 +26,6 @@ const TabText = styled.p<{ $isActive: boolean }>`
   }
 `;
 
-const IconButton = styled.button`
-  background: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  border-radius: 50%;
-  border: 1px solid transparent;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-
-  &:hover {
-    background-color: ${({ theme }) => theme.colors.border};
-  }
-`;
-
 const TabComponent = styled.div<{ $isActive: boolean; $tabType: string }>`
   display: flex;
   align-items: center;

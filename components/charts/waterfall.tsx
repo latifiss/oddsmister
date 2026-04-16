@@ -99,7 +99,6 @@ const WaterfallChart: React.FC<WaterfallChartProps> = ({
       .domain([0, maxValue + 10])
       .range([innerH, 0])
 
-    // Add grid lines
     const yTicks = yScale.ticks(5)
     g.selectAll('.grid-line')
       .data(yTicks)
@@ -113,7 +112,6 @@ const WaterfallChart: React.FC<WaterfallChartProps> = ({
       .attr('stroke-width', 0.8)
       .attr('stroke-dasharray', '4,4')
 
-    // Add bars
     resolvedData.forEach((d, i) => {
       const isUnder = d.label.includes('Under')
       const color = isUnder ? underColor : overColor
@@ -138,7 +136,6 @@ const WaterfallChart: React.FC<WaterfallChartProps> = ({
         .text(`${d.value}%`)
     })
 
-    // Add x-axis
     g.append('g')
       .attr('transform', `translate(0, ${innerH})`)
       .call(d3.axisBottom(xScale))
@@ -148,7 +145,6 @@ const WaterfallChart: React.FC<WaterfallChartProps> = ({
       .call(g => g.select('.domain').attr('stroke', '#ccc'))
       .call(g => g.selectAll('.tick line').attr('stroke', '#ccc'))
 
-    // Add y-axis
     g.append('g')
       .call(d3.axisLeft(yScale).ticks(5).tickFormat(d => `${d}%`))
       .style('font-size', '9px')
@@ -157,7 +153,6 @@ const WaterfallChart: React.FC<WaterfallChartProps> = ({
       .call(g => g.select('.domain').attr('stroke', '#ccc'))
       .call(g => g.selectAll('.tick line').attr('stroke', '#ccc'))
 
-    // Add a reference line at 50%
     const line50 = yScale(50)
     g.append('line')
       .attr('x1', 0)

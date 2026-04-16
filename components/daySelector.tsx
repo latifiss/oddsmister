@@ -10,7 +10,7 @@ const Container = styled.div`
   justify-content: space-between;
   width: 100%;
   margin-bottom: 20px;
-  padding: 0 4px;
+  padding: 0;
 `;
 
 const NavButtonLeft = styled.button`

@@ -3,7 +3,6 @@
 import React from 'react';
 import styled from 'styled-components';
 
-/* ===== Container ===== */
 const Container = styled.div`
   display: flex;
   flex-direction: column;
@@ -14,7 +13,6 @@ const Container = styled.div`
   border: 1px solid ${({ theme }) => theme.colors.border};
 `;
 
-/* ===== Header ===== */
 const Header = styled.div`
   display: flex;
   align-items: center;
@@ -52,7 +50,6 @@ const Region = styled.p`
   line-height: 1;
 `;
 
-/* ===== Date ===== */
 const DateTime = styled.span`
   font-size: 12px;
   font-weight: 600;
@@ -65,7 +62,6 @@ const DateTime = styled.span`
   line-height: 1;
 `;
 
-/* ===== Match Row ===== */
 const MatchRow = styled.div`
   display: grid;
   grid-template-columns: 1fr auto auto auto auto;
@@ -124,7 +120,6 @@ const DropValue = styled.p`
   text-align: right;
 `;
 
-/* ===== Component ===== */
 interface ScoreProps {
   sport?: string;
   region?: string;
@@ -154,7 +149,6 @@ const Score = ({
 }: ScoreProps) => {
   return (
     <Container>
-      {/* Header */}
       <Header>
         <IconWrapper>{sportIcon}</IconWrapper>
         <HeaderText>
@@ -163,10 +157,8 @@ const Score = ({
         </HeaderText>
       </Header>
 
-      {/* DateTime */}
       <DateTime>{dateTime}</DateTime>
 
-      {/* Team 1 Row */}
       <MatchRow>
         <TeamColumn>
           <TeamIcon>{team1Icon}</TeamIcon>
@@ -178,7 +170,6 @@ const Score = ({
         <DropValue>{dropPercentage}%</DropValue>
       </MatchRow>
 
-      {/* Team 2 Row */}
       <MatchRow>
         <TeamColumn>
           <TeamIcon>{team2Icon}</TeamIcon>

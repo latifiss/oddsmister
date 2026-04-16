@@ -112,12 +112,12 @@ const BreadcrumbContainer = styled.nav`
     -webkit-overflow-scrolling: touch;
 `
 
-const Crumb = styled.span<{ clickable?: boolean }>`
+const Crumb = styled.span<{ $clickable?: boolean }>`
     color: #6d747b;
     font-size: 14px;
-    font-weight: ${props => (props.clickable ? '500' : '400')};
+    font-weight: ${props => (props.$clickable ? '500' : '400')};
     font-family: inherit;
-    cursor: ${props => (props.clickable ? 'pointer' : 'default')};
+    cursor: ${props => (props.$clickable ? 'pointer' : 'default')};
     text-decoration: none;
     white-space: nowrap;
 
@@ -158,7 +158,7 @@ const HeadBlock = styled.div`
     gap: 8px;
 `
 
-const LabelTitle = styled.p`
+const LabelTitle = styled.div`
     font-size: 18px;
     font-weight: 600;
     line-height: 20px;
@@ -168,7 +168,7 @@ const LabelTitle = styled.p`
     white-space: nowrap;
 `
 
-const LabelDate = styled.p`
+const LabelDate = styled.div`
     font-size: 16px;
     font-weight: 500;
     line-height: 18px;
@@ -183,7 +183,7 @@ const LabelCompIcon = styled(Image)`
     height: 20px;
 `
 
-const LabelCompBlock = styled.p`
+const LabelCompBlock = styled.div`
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -191,7 +191,7 @@ const LabelCompBlock = styled.p`
     gap: 8px;
 `
 
-const LabelComp = styled.p`
+const LabelComp = styled.div`
     font-size: 14px;
     font-weight: 500;
     line-height: 18px;
@@ -271,20 +271,20 @@ export const Breadcrumb = ({ isActive }: BreadcrumbProps) => {
     return (
         <BreadcrumbContainer>
             <BreadLink href="/livescore" passHref>
-                <Crumb clickable>Livescore</Crumb>
+                <Crumb as="span" $clickable>Livescore</Crumb>
             </BreadLink>
             <IconContainer $isActive={isActive}>
                 <Icon />
             </IconContainer>
 
             <BreadLink href="/competition" passHref>
-                <Crumb clickable>Premier League</Crumb>
+                <Crumb as="span" $clickable>Premier League</Crumb>
             </BreadLink>
             <IconContainer $isActive={isActive}>
                 <Icon />
             </IconContainer>
 
-            <Crumb>Arsenal vs Nottingham Forest</Crumb>
+            <Crumb as="span">Arsenal vs Nottingham Forest</Crumb>
         </BreadcrumbContainer>
     )
 }
@@ -311,31 +311,29 @@ const Page = () => {
                 </LabelCompBlock>
             </HeadBlock>
 
-            
-
             <MainGrid>
                 <LeftColumn>
                     <ScoreContent>
-                {[matches[0]].map((match) => (
-                    <ScoreBoard
-                        key={match.id}
-                        homeTeam={match.homeTeam.name}
-                        awayTeam={match.awayTeam.name}
-                        homeImage={match.homeTeam.badge}
-                        awayImage={match.awayTeam.badge}
-                        date={match.date}
-                        time={match.time}
-                        homeScore={match.homeTeam.score?.toString()}
-                        awayScore={match.awayTeam.score?.toString()}
-                        homeRedCard={match.homeTeam.redCards}
-                        awayRedCard={match.awayTeam.redCards}
-                        status={match.status}
-                        isActive={true}
-                        minute={match.minute}
-                        isSuperboostAvailable={match.isSuperboostAvailable}
-                    />
-                ))}
-            </ScoreContent>
+                        {[matches[0]].map((match) => (
+                            <ScoreBoard
+                                key={match.id}
+                                homeTeam={match.homeTeam.name}
+                                awayTeam={match.awayTeam.name}
+                                homeImage={match.homeTeam.badge}
+                                awayImage={match.awayTeam.badge}
+                                date={match.date}
+                                time={match.time}
+                                homeScore={match.homeTeam.score?.toString()}
+                                awayScore={match.awayTeam.score?.toString()}
+                                homeRedCard={match.homeTeam.redCards}
+                                awayRedCard={match.awayTeam.redCards}
+                                status={match.status}
+                                isActive={true}
+                                minute={match.minute}
+                                isSuperboostAvailable={match.isSuperboostAvailable}
+                            />
+                        ))}
+                    </ScoreContent>
                     <DesktopView>
                         <TwoColumnGrid>
                             <Analysis isActive={isActive} />

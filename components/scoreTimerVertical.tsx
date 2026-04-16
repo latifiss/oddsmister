@@ -3,15 +3,13 @@
 import React from 'react'
 import styled from 'styled-components'
 
-/* ===== Types ===== */
 interface ScoreTimerVerticalProps {
-  minute: number          // 0–90 (or beyond for extra time)
-  maxMinute?: number      // defaults to 90
-  isHalftime?: boolean    // whether match is at halftime
-  isFulltime?: boolean    // whether match is complete
+  minute: number         
+  maxMinute?: number      
+  isHalftime?: boolean    
+  isFulltime?: boolean    
 }
 
-/* ===== Styled Components ===== */
 const Wrapper = styled.div`
   display: inline-flex;
   flex-direction: column;
@@ -56,14 +54,12 @@ const MinuteLabel = styled.div<{ $isHalftime?: boolean; $isFulltime?: boolean }>
   line-height: 1;
 `
 
-/* ===== Component ===== */
 const ScoreTimerVertical: React.FC<ScoreTimerVerticalProps> = ({ 
   minute, 
   maxMinute = 90,
   isHalftime = false,
   isFulltime = false 
 }) => {
-  // Handle different match states
   let displayMinute = minute
   let progress = 0
   
@@ -79,20 +75,17 @@ const ScoreTimerVertical: React.FC<ScoreTimerVerticalProps> = ({
     displayMinute = clamped
   }
   
-  // Handle extra time (beyond 90)
   let displayText = `${displayMinute}'`
   if (minute > 90 && !isFulltime) {
     const extraTime = minute - 90
     displayText = `90+${extraTime}'`
-    progress = 100 // Full bar during extra time
+    progress = 100 
   }
   
-  // Handle halftime display
   if (isHalftime) {
     displayText = "HT"
   }
   
-  // Handle fulltime display
   if (isFulltime) {
     displayText = "FT"
   }

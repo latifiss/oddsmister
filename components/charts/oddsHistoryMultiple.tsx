@@ -5,7 +5,6 @@ import styled from 'styled-components'
 import * as d3 from 'd3'
 import LegendLabel from '../legendLabel'
 
-/* ===== Types ===== */
 interface DataPoint {
   time: Date
   value: number
@@ -26,7 +25,6 @@ interface OddHistoryMultipleProps {
   timeLabel?: string
 }
 
-/* ===== Styled Components ===== */
 const Wrapper = styled.div`
   display: inline-flex;
   flex-direction: column;
@@ -86,12 +84,9 @@ const LegendText = styled.span`
   font-family: inherit;
 `
 
-/* ===== Default Demo Data ===== */
 function generateDefaultData1(): DataPoint[] {
   const base = new Date('2024-03-24T00:00:00')
-  const raw = [
-    3.3, 2.7, 2.55, 2.6, 2.5, 2.55, 2.52, 2.58, 2.6, 2.55
-  ]
+  const raw = [3.3, 2.7, 2.55, 2.6, 2.5, 2.55, 2.52, 2.58, 2.6, 2.55]
   return raw.map((value, i) => ({
     time: new Date(base.getTime() + i * 15 * 60 * 1000),
     value,
@@ -100,9 +95,7 @@ function generateDefaultData1(): DataPoint[] {
 
 function generateDefaultData2(): DataPoint[] {
   const base = new Date('2024-03-24T00:00:00')
-  const raw = [
-    2.8, 2.6, 2.45, 2.5, 2.4, 2.45, 2.42, 2.48, 2.5, 2.45
-  ]
+  const raw = [2.8, 2.6, 2.45, 2.5, 2.4, 2.45, 2.42, 2.48, 2.5, 2.45]
   return raw.map((value, i) => ({
     time: new Date(base.getTime() + i * 15 * 60 * 1000),
     value,
@@ -111,16 +104,13 @@ function generateDefaultData2(): DataPoint[] {
 
 function generateDefaultData3(): DataPoint[] {
   const base = new Date('2024-03-24T00:00:00')
-  const raw = [
-    2.5, 2.4, 2.35, 2.4, 2.3, 2.35, 2.32, 2.38, 2.4, 2.35
-  ]
+  const raw = [2.5, 2.4, 2.35, 2.4, 2.3, 2.35, 2.32, 2.38, 2.4, 2.35]
   return raw.map((value, i) => ({
     time: new Date(base.getTime() + i * 15 * 60 * 1000),
     value,
   }))
 }
 
-/* ===== Component ===== */
 const OddHistoryMultiple: React.FC<OddHistoryMultipleProps> = ({
   data1,
   data2,
@@ -153,11 +143,9 @@ const OddHistoryMultiple: React.FC<OddHistoryMultipleProps> = ({
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`)
 
-    // Combine all data to find global min/max
     const allData = [...resolvedData1, ...resolvedData2, ...resolvedData3]
     if (allData.length === 0) return
 
-    /* ── Scales ── */
     const xExtent = d3.extent(allData, d => d.time) as [Date, Date]
     const yExtent = d3.extent(allData, d => d.value) as [number, number]
     const yPad = (yExtent[1] - yExtent[0]) * 0.15
@@ -168,7 +156,6 @@ const OddHistoryMultiple: React.FC<OddHistoryMultipleProps> = ({
       .domain([yExtent[0] - yPad, yExtent[1] + yPad])
       .range([innerH, 0])
 
-    /* ── Grid lines ── */
     const yTicks = yScale.ticks(4)
     g.selectAll('.grid-line')
       .data(yTicks)
@@ -183,10 +170,8 @@ const OddHistoryMultiple: React.FC<OddHistoryMultipleProps> = ({
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', '3,3')
 
-    /* ── Y Axis with alternating visibility ── */
     yTicks.forEach((tick, index) => {
       const shouldShowLabel = index % 2 === 0
-      
       if (shouldShowLabel) {
         g.append('text')
           .attr('x', -6)
@@ -200,7 +185,6 @@ const OddHistoryMultiple: React.FC<OddHistoryMultipleProps> = ({
       }
     })
 
-    /* ── X Axis labels (just start + end) ── */
     const firstDate = resolvedData1[0]?.time || new Date()
     const xDateLabel = d3.timeFormat('%b %-d')(firstDate)
 
@@ -233,7 +217,6 @@ const OddHistoryMultiple: React.FC<OddHistoryMultipleProps> = ({
       .style('font-family', 'inherit')
       .text(timeLabel)
 
-    // Helper function to draw line and dots for a dataset
     const drawLineAndDots = (data: DataPoint[], color: string) => {
       if (!data.length) return
 
@@ -262,7 +245,6 @@ const OddHistoryMultiple: React.FC<OddHistoryMultipleProps> = ({
         .attr('stroke-width', 1.5)
     }
 
-    // Draw all three lines
     drawLineAndDots(resolvedData1, color1)
     drawLineAndDots(resolvedData2, color2)
     drawLineAndDots(resolvedData3, color3)
@@ -282,18 +264,18 @@ const OddHistoryMultiple: React.FC<OddHistoryMultipleProps> = ({
       <Legend>
         <LegendItem>
           <LegendLine $color={color1} />
-                  <LegendDot $color={color1} />
-                  <LegendLabel teamName='Arsenal' badgeUrl='https://img.sofascore.com/api/v1/team/42/image'></LegendLabel>
+          <LegendDot $color={color1} />
+          <LegendLabel teamName={label1} badgeUrl="" />
         </LegendItem>
         <LegendItem>
           <LegendLine $color={color2} />
           <LegendDot $color={color2} />
-          <LegendLabel teamName='Chelsea' badgeUrl='https://img.sofascore.com/api/v1/team/43/image'></LegendLabel>
+          <LegendLabel teamName={label2} badgeUrl="" />
         </LegendItem>
         <LegendItem>
           <LegendLine $color={color3} />
           <LegendDot $color={color3} />
-          <LegendText>Draw</LegendText>
+          <LegendText>{label3}</LegendText>
         </LegendItem>
       </Legend>
     </Wrapper>
