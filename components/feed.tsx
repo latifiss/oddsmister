@@ -1,90 +1,50 @@
 'use client';
 
-import React from 'react'
+import { useMatches, useLiveMatches } from '@/hooks/useMatches';
+import { useState } from 'react';
 import styled from 'styled-components';
-import OddScoreItem from './oddScoreItem';
-import OddScoreHead from './oddScoreHead';
-import { matches, Match } from '@/data/matches';
+import ScoreBoard from './scoreBoard';
 
-const ScoreWrapper = styled.div`
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-`
-
-const ScoreContent = styled.div`
+const Container = styled.div`
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: 100%;
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
-  border-left: 1px solid ${({ theme }) => theme.colors.border};
-  border-right: 1px solid ${({ theme }) => theme.colors.border};
-  border-bottom-right-radius: 12px;
-  border-bottom-left-radius: 12px;
-  padding: 2px 0px 12px 0px;
-
-  & > *:not(:last-child) {
-    border-bottom: 1px solid ${({ theme }) => theme.colors.border};
-    width: 100%;
-  }
+  gap: 12px;
 `;
 
-const CompetitionGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  margin-bottom: 20px;
+const LoadingSpinner = styled.div`
+  text-align: center;
+  padding: 20px;
+  color: #666;
 `;
 
-const Feed = () => {
-  const groupedMatches = matches.reduce((groups, match) => {
-    const compKey = match.competition.name;
-    if (!groups[compKey]) {
-      groups[compKey] = {
-        competition: match.competition,
-        matches: []
-      };
-    }
-    groups[compKey].matches.push(match);
-    return groups;
-  }, {} as Record<string, { competition: Match['competition']; matches: Match[] }>);
+export default function Feed() {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const { matches, isLoading, isError } = useMatches();
+  const { liveMatches } = useLiveMatches();
+
+  if (isLoading) return <LoadingSpinner>Loading matches...</LoadingSpinner>;
+  if (isError) return <LoadingSpinner>Error loading matches</LoadingSpinner>;
+
+  const allMatches = [...liveMatches, ...matches];
+  const uniqueMatches = Array.from(new Map(allMatches.map(m => [m.fixture.id, m])).values());
 
   return (
-    <ScoreWrapper>
-      {Object.values(groupedMatches).map((group) => (
-        <CompetitionGroup key={group.competition.name}>
-          <OddScoreHead 
-            logo={group.competition.logo} 
-            competition={group.competition.name}
-            country={group.competition.country}
-          />
-          <ScoreContent>
-            {group.matches.map((match) => (
-              <OddScoreItem
-                key={match.id}
-                homeTeam={match.homeTeam.name}
-                awayTeam={match.awayTeam.name}
-                homeImage={match.homeTeam.badge}
-                awayImage={match.awayTeam.badge}
-                date={match.date}
-                time={match.time}
-                homeScore={match.homeTeam.score?.toString()}
-                awayScore={match.awayTeam.score?.toString()}
-                homeRedCard={match.homeTeam.redCards}
-                awayRedCard={match.awayTeam.redCards}
-                status={match.status}
-                isActive={true}
-                minute={match.minute}
-                isSuperboostAvailable={match.isSuperboostAvailable}
-              />
-            ))}
-          </ScoreContent>
-        </CompetitionGroup>
+    <Container>
+      {uniqueMatches.map((match) => (
+        <ScoreBoard
+          key={match.fixture.id}
+          homeTeam={match.teams.home.name}
+          awayTeam={match.teams.away.name}
+          homeImage={match.teams.home.logo}
+          awayImage={match.teams.away.logo}
+          date={match.fixture.date}
+          homeScore={match.goals.home}
+          awayScore={match.goals.away}
+          status={match.fixture.status.short}
+          minute={match.fixture.status.elapsed}
+          isLive={match.fixture.status.short === '1H' || match.fixture.status.short === '2H'}
+        />
       ))}
-    </ScoreWrapper>
+    </Container>
   );
 }
-
-export default Feed;
