@@ -26,6 +26,7 @@ const RowContainer = styled.div`
   width: 100%;
   margin-bottom: 8px;
   align-items: center;
+  flex-wrap: wrap;
 `;
 
 const CompareButton = styled.button`
@@ -42,6 +43,7 @@ const CompareButton = styled.button`
   border-radius: 6px;
   transition: all 0.2s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 
   &:hover {
     color: ${({ theme }) => theme.colors.text};
@@ -57,6 +59,8 @@ const OddsWrapper = styled.div<{ $showCompare: boolean }>`
   display: flex;
   gap: 8px;
   flex: 1;
+  min-width: 0; /* Allows flex children to shrink below content size */
+  flex-wrap: wrap;
 `;
 
 const OddsRow: React.FC<OddsRowProps> = ({

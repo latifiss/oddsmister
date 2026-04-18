@@ -89,8 +89,8 @@ const ChartContainer = styled.div`
 `
 
 const DualGaugeChart: React.FC<DualGaugeChartProps> = ({
-  overProbability = 45,
-  underProbability = 55,
+  overProbability = 50,
+  underProbability = 50,
   homeTeam = 'Home Team',
   awayTeam = 'Away Team',
   homeColor = '#fc8d59',
@@ -240,13 +240,13 @@ const DualGaugeChart: React.FC<DualGaugeChartProps> = ({
         <GaugeWrapper>
           <GaugeLabel $color={homeColor}>UNDER 2.5 GOALS</GaugeLabel>
           <GaugeValue $color={homeColor}>{underProbability}%</GaugeValue>
-          <GaugeSubLabel>{homeTeam}倾向</GaugeSubLabel>
+          <GaugeSubLabel>{homeTeam}傾向</GaugeSubLabel>
         </GaugeWrapper>
         
         <GaugeWrapper>
           <GaugeLabel $color={awayColor}>OVER 2.5 GOALS</GaugeLabel>
           <GaugeValue $color={awayColor}>{overProbability}%</GaugeValue>
-          <GaugeSubLabel>{awayTeam}倾向</GaugeSubLabel>
+          <GaugeSubLabel>{awayTeam}傾向</GaugeSubLabel>
         </GaugeWrapper>
       </GaugeContainer>
       

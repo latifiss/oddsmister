@@ -4,7 +4,6 @@ import React from 'react';
 import styled from 'styled-components';
 import ConnectedTags from './connectedTags';
 import Image from 'next/image';
-import ScoreTimerVertical from './scoreTimerVertical';
 import Superboost from './superboost';
 import HotTag from './hotTag';
 import BestOddTag from './bestOddTag';
@@ -105,18 +104,6 @@ const InnerAlt = styled.div`
   }
 `;
 
-const Date = styled.span`
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 12px;
-  color: ${({ theme }) => theme.colors.grayText};
-  font-family: inherit;
-  text-decoration: none;
-  white-space: nowrap;
-  text-align: center;
-  margin: 0;
-`;
-
 const OddSign = styled.span`
   font-size: 12px;
   font-weight: 500;
@@ -212,61 +199,29 @@ const Odd = styled.div`
     border: 1px solid ${({ theme }) => theme.colors.border};
     border-radius: 8px;
     font-size: 12px;
-  font-weight: 700;
-  line-height: 16px;
-  color: ${({ theme }) => theme.colors.text};
-  font-family: inherit;
-  text-decoration: none;
-  white-space: nowrap;
-  text-align: center;
+    font-weight: 700;
+    line-height: 16px;
+    color: ${({ theme }) => theme.colors.text};
+    font-family: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    text-align: center;
 `
 
 const Score = styled.div`
-display: flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     width: 15px;
     height: 24px;
     font-size: 13px;
-  font-weight: 700;
-  line-height: 16px;
-  color: ${({ theme }) => theme.colors.hot};
-  font-family: inherit;
-  text-decoration: none;
-  white-space: nowrap;
-  text-align: center;
-`
-
-const ScoreEnd = styled.div`
-display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 15px;
-    height: 24px;
-    font-size: 13px;
-  font-weight: 700;
-  line-height: 16px;
-  color: ${({ theme }) => theme.colors.end};
-  font-family: inherit;
-  text-decoration: none;
-  white-space: nowrap;
-  text-align: center;
-`
-
-const ScoreHalf = styled.div`
-display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 15px;
-    height: 24px;
-    font-size: 13px;
-  font-weight: 700;
-  line-height: 16px;
-  color: ${({ theme }) => theme.colors.half};
-  font-family: inherit;
-  text-decoration: none;
-  white-space: nowrap;
-  text-align: center;
+    font-weight: 700;
+    line-height: 16px;
+    color: ${({ theme }) => theme.colors.hot};
+    font-family: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    text-align: center;
 `
 
 const StatusContainer = styled.div`
@@ -309,6 +264,8 @@ interface ScoreProps {
   isSuperboostAvailable?: boolean;
   chartType?: ChartType;
   prediction?: any;
+  homeColor?: string;
+  awayColor?: string;
 }
 
 const getMatchStatus = (status: string): MatchStatus => {
@@ -317,6 +274,33 @@ const getMatchStatus = (status: string): MatchStatus => {
   if (status === 'FT') return 'ended';
   if (status === 'NS') return 'not_started';
   return 'not_started';
+};
+
+const getTeamColor = (teamName: string): string => {
+  const teamColors: Record<string, string> = {
+    'Arsenal': '#ef0107',
+    'Chelsea': '#034694',
+    'Manchester United': '#da020e',
+    'Manchester City': '#1c7c4c',
+    'Liverpool': '#c8102e',
+    'Tottenham': '#132257',
+    'Newcastle': '#241f20',
+    'Aston Villa': '#670e36',
+    'West Ham': '#7a2d3a',
+    'Everton': '#003399',
+    'Leicester': '#003090',
+    'Crystal Palace': '#1b458f',
+    'Brighton': '#0057b8',
+    'Wolves': '#fdb913',
+    'Fulham': '#000000',
+    'Brentford': '#e30613',
+    'Nottingham Forest': '#e5322e',
+    'Bournemouth': '#da291c',
+    'Southampton': '#d71920',
+    'Ipswich': '#0033a0',
+  };
+  
+  return teamColors[teamName] || '#2db84b';
 };
 
 const PredictionScoreItem = ({ 
@@ -333,9 +317,13 @@ const PredictionScoreItem = ({
   minute,
   isSuperboostAvailable = false,
   chartType,
-  prediction
+  prediction,
+  homeColor: customHomeColor,
+  awayColor: customAwayColor
 }: ScoreProps) => {
   const status = getMatchStatus(rawStatus);
+  const homeColor = customHomeColor || getTeamColor(homeTeam);
+  const awayColor = customAwayColor || getTeamColor(awayTeam);
   
   const renderStatusText = (text: string) => {
     const words = text.split(' ');
@@ -449,8 +437,8 @@ const PredictionScoreItem = ({
               drawProbability={prediction?.predictions?.draw_percentage || 20}
               homeTeam={homeTeam}
               awayTeam={awayTeam}
-              homeColor="#ef0107"
-              awayColor="#034694"
+              homeColor={homeColor}
+              awayColor={awayColor}
               homeBadge={homeImage}
               awayBadge={awayImage}
             />
@@ -463,6 +451,10 @@ const PredictionScoreItem = ({
             <GoalLineProbability 
               overProbability={prediction?.predictions?.goals?.over_percentage || 45}
               underProbability={prediction?.predictions?.goals?.under_percentage || 55}
+              homeTeam={homeTeam}
+              awayTeam={awayTeam}
+              homeColor={homeColor}
+              awayColor={awayColor}
             />
           </IQContainer>
         );
@@ -475,6 +467,8 @@ const PredictionScoreItem = ({
               underProbability={prediction?.predictions?.goals?.under_percentage || 55}
               homeTeam={homeTeam}
               awayTeam={awayTeam}
+              homeColor={homeColor}
+              awayColor={awayColor}
               title="Over / Under Goals Probability"
             />
           </IQContainer>

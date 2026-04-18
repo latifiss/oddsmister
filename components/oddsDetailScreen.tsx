@@ -1,20 +1,35 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import styled, { useTheme } from 'styled-components';
+import styled from 'styled-components';
 import Image from 'next/image';
 import OddsRow from './oddsRow';
-import OddsRowAlt from './oddsRowAlt';
 import { IoChevronForward, IoClose } from 'react-icons/io5';
-import { getProviderLogo } from '@/utils/bettingProviders';
+import { getProviderLogo, bettingProviders } from '@/utils/bettingProviders';
 import { useBettingProvider } from '@/hooks/useBettingProvider';
+
+const LoadingContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  color: ${({ theme }) => theme.colors.grayText};
+`;
+
+const ErrorContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  color: ${({ theme }) => theme.colors.error || '#ff4444'};
+`;
 
 const Container = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 20px;
-  max-width: 600px;
+  width: 100%;
   border-radius: 12px;
   border: 1px solid ${({ theme }) => theme.colors.border};
   background: ${({ theme }) => theme.colors.background};
@@ -92,7 +107,7 @@ const ModalContent = styled.div<{ $isOpen: boolean }>`
   @media only screen and (max-width: 768px) {
     border-radius: 20px 20px 0 0;
     max-height: 80vh;
-    transform: translateY(${({ $isOpen }) => $isOpen ? '0%' : '100%'});
+    transform: translateY($({ $isOpen }) => $isOpen ? '0%' : '100%'});
     opacity: 1;
     max-width: 100%;
   }
@@ -238,16 +253,13 @@ const ProviderOdds = styled.div`
 const OddButtonStyled = styled.button<{ $isBest?: boolean }>`
   min-width: 60px;
   height: 32px;
-  border: 1px solid ${({ theme, $isBest }) => 
-    $isBest ? theme.colors.border : theme.colors.border};
+  border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: 8px;
-  background: ${({ theme, $isBest }) => 
-    $isBest ? 'transparent' : 'transparent'};
+  background: transparent;
   font-size: 12px;
   font-weight: 700;
   line-height: 16px;
-  color: ${({ theme, $isBest }) => 
-    $isBest ? theme.colors.text : theme.colors.text};
+  color: ${({ theme }) => theme.colors.text};
   font-family: inherit;
   text-decoration: none;
   white-space: nowrap;
@@ -261,9 +273,43 @@ const OddButtonStyled = styled.button<{ $isBest?: boolean }>`
   }
 `;
 
-const OddsDetailScreen = () => {
+interface ApiOdds {
+  id: number;
+  fixture: { id: number };
+  bookmakers: Array<{
+    id: number;
+    name: string;
+    bets: Array<{
+      id: number;
+      name: string;
+      values: Array<{
+        value: string;
+        odd: string;
+      }>;
+    }>;
+  }>;
+}
+
+interface OddsMarket {
+  name: string;
+  displayName: string;
+  odds: Array<{ id: string; value: number; label: string }>;
+  labels: string[];
+}
+
+interface OddsDetailScreenProps {
+  fixtureId?: number | string;
+  initialOddsData?: any;
+}
+
+const OddsDetailScreen = ({ fixtureId, initialOddsData }: OddsDetailScreenProps) => {
   const { getLogo, currentTheme } = useBettingProvider();
   const [selectedOdds, setSelectedOdds] = useState<Map<string, boolean>>(new Map());
+  const [oddsData, setOddsData] = useState<ApiOdds | null>(initialOddsData || null);
+  const [loading, setLoading] = useState(!initialOddsData);
+  const [error, setError] = useState<string | null>(null);
+  const [availableMarkets, setAvailableMarkets] = useState<OddsMarket[]>([]);
+  
   const [modalData, setModalData] = useState<{
     isOpen: boolean;
     marketName: string;
@@ -279,6 +325,126 @@ const OddsDetailScreen = () => {
     providers: [],
     oddsLabels: [],
   });
+
+  const hasValidLogo = (providerName: string): boolean => {
+    const normalizedName = providerName.toLowerCase().replace(/\s+/g, '');
+    const provider = bettingProviders.find(p => 
+      p.id === normalizedName || 
+      p.apiName?.some(apiName => apiName.toLowerCase() === providerName.toLowerCase())
+    );
+    if (!provider) return false;
+    
+    const logo = getLogo(provider.id, currentTheme);
+    return logo !== '/icons/default-bookmaker.svg' && logo !== '';
+  };
+
+  useEffect(() => {
+    if (initialOddsData) {
+      setOddsData(initialOddsData);
+      setLoading(false);
+      return;
+    }
+    
+    const fetchOdds = async () => {
+      if (!fixtureId) {
+        setError('No fixture ID provided');
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch(`/api/odds?fixtureId=${fixtureId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch odds');
+        }
+        const data = await response.json();
+        setOddsData(data.response?.[0] || null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load odds data');
+        console.error('Error fetching odds:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOdds();
+  }, [fixtureId, initialOddsData]);
+
+  useEffect(() => {
+    if (!oddsData?.bookmakers || oddsData.bookmakers.length === 0) return;
+
+    const filteredBookmakers = oddsData.bookmakers.filter(bookmaker => 
+      hasValidLogo(bookmaker.name)
+    );
+
+    if (filteredBookmakers.length === 0) return;
+
+    const allBets = new Map<string, Set<string>>();
+    
+    filteredBookmakers.forEach(bookmaker => {
+      bookmaker.bets.forEach(bet => {
+        if (!allBets.has(bet.name)) {
+          allBets.set(bet.name, new Set());
+        }
+        bet.values.forEach(value => {
+          allBets.get(bet.name)?.add(value.value);
+        });
+      });
+    });
+
+    const marketConfig: Record<string, { displayName: string, getLabels: (values: string[]) => string[] }> = {
+      'Match Winner': { displayName: 'Match Result (1X2)', getLabels: (values) => values.map(v => v === 'Home' ? '1' : v === 'Draw' ? 'X' : '2') },
+      'Double Chance': { displayName: 'Double Chance', getLabels: (values) => values },
+      'Both Teams Score': { displayName: 'Both Teams to Score', getLabels: (values) => values },
+      'Goals Over/Under': { displayName: 'Over/Under Goals', getLabels: (values) => values },
+      'First Half Winner': { displayName: 'First Half Winner', getLabels: (values) => values.map(v => v === 'Home' ? '1' : v === 'Draw' ? 'X' : '2') },
+      'Second Half Winner': { displayName: 'Second Half Winner', getLabels: (values) => values.map(v => v === 'Home' ? '1' : v === 'Draw' ? 'X' : '2') },
+      'Asian Handicap': { displayName: 'Asian Handicap', getLabels: (values) => values },
+      'Handicap Result': { displayName: 'Handicap Result', getLabels: (values) => values },
+      'HT/FT Double': { displayName: 'Half Time/Full Time', getLabels: (values) => values },
+      'Exact Score': { displayName: 'Correct Score', getLabels: (values) => values },
+      'Highest Scoring Half': { displayName: 'Highest Scoring Half', getLabels: (values) => values },
+      'Odd/Even': { displayName: 'Odd/Even Total Goals', getLabels: (values) => values },
+      'Team To Score First': { displayName: 'First Goal Scorer', getLabels: (values) => values },
+      'Win To Nil': { displayName: 'Win to Nil', getLabels: (values) => values },
+    };
+
+    const markets: OddsMarket[] = [];
+
+    for (const [betName, valueSet] of allBets.entries()) {
+      const config = marketConfig[betName];
+      if (!config) continue;
+
+      const values = Array.from(valueSet);
+      const labels = config.getLabels(values);
+      
+      const bookmakerWithBet = filteredBookmakers.find(bookmaker =>
+        bookmaker.bets.some(bet => bet.name === betName)
+      );
+
+      if (bookmakerWithBet) {
+        const bet = bookmakerWithBet.bets.find(b => b.name === betName);
+        if (bet) {
+          const odds = bet.values.map((value, idx) => ({
+            id: `${betName}_${value.value}_${idx}`,
+            value: parseFloat(value.odd),
+            label: labels[idx] || value.value,
+          }));
+          
+          markets.push({
+            name: betName,
+            displayName: config.displayName,
+            odds: odds,
+            labels: labels,
+          });
+        }
+      }
+    }
+
+    setAvailableMarkets(markets);
+  }, [oddsData, currentTheme]);
 
   useEffect(() => {
     if (modalData.isOpen) {
@@ -299,109 +465,41 @@ const OddsDetailScreen = () => {
       newSelected.set(id, true);
     }
     setSelectedOdds(newSelected);
-    console.log(`Selected odd ${id}: ${value}`);
   };
 
-  const handleCompareClick = (marketName: string, oddsLabels?: string[]) => {
-    const providersData: Record<string, Array<{
+  const handleCompareClick = (marketName: string, oddsLabels: string[]) => {
+    if (!oddsData?.bookmakers) return;
+    
+    const filteredBookmakers = oddsData.bookmakers.filter(bookmaker => 
+      hasValidLogo(bookmaker.name)
+    );
+    
+    const providers = filteredBookmakers.map(bookmaker => {
+      const bet = bookmaker.bets.find(b => b.name === marketName);
+      if (!bet) return null;
+      
+      const normalizedName = bookmaker.name.toLowerCase().replace(/\s+/g, '');
+      
+      return {
+        name: bookmaker.name,
+        logo: getLogo(normalizedName),
+        odds: bet.values.map((value, idx) => ({
+          id: `${bookmaker.name}_${value.value}_${idx}`,
+          value: parseFloat(value.odd),
+          label: oddsLabels[idx] || value.value
+        }))
+      };
+    }).filter(provider => provider !== null) as Array<{
       name: string;
       logo: string;
       odds: Array<{ id: string; value: number; label?: string }>;
-    }>> = {
-      'Match Result': [
-        { name: 'Bet365', logo: getLogo('bet365'), odds: [
-          { id: 'home_365', value: 2.20 },
-          { id: 'draw_365', value: 3.50 },
-          { id: 'away_365', value: 3.30 }
-        ]},
-        { name: '10Bet', logo: getLogo('10bet'), odds: [
-          { id: 'home_10bet', value: 2.18 },
-          { id: 'draw_10bet', value: 3.48 },
-          { id: 'away_10bet', value: 3.28 }
-        ]},
-        { name: '1xBet', logo: getLogo('1xbet'), odds: [
-          { id: 'home_1xbet', value: 2.25 },
-          { id: 'draw_1xbet', value: 3.55 },
-          { id: 'away_1xbet', value: 3.35 }
-        ]},
-        { name: '188Bet', logo: getLogo('188bet'), odds: [
-          { id: 'home_188bet', value: 2.16 },
-          { id: 'draw_188bet', value: 3.42 },
-          { id: 'away_188bet', value: 3.22 }
-        ]},
-        { name: 'Betfred', logo: getLogo('betfred'), odds: [
-          { id: 'home_betfred', value: 2.12 },
-          { id: 'draw_betfred', value: 3.38 },
-          { id: 'away_betfred', value: 3.18 }
-        ]},
-        { name: 'bwin', logo: getLogo('bwin'), odds: [
-          { id: 'home_bwin', value: 2.14 },
-          { id: 'draw_bwin', value: 3.44 },
-          { id: 'away_bwin', value: 3.24 }
-        ]},
-        { name: 'Dafabet', logo: getLogo('dafabet'), odds: [
-          { id: 'home_dafabet', value: 2.22 },
-          { id: 'draw_dafabet', value: 3.52 },
-          { id: 'away_dafabet', value: 3.32 }
-        ]},
-        { name: 'Interwetten', logo: getLogo('interwetten'), odds: [
-          { id: 'home_interwetten', value: 2.10 },
-          { id: 'draw_interwetten', value: 3.35 },
-          { id: 'away_interwetten', value: 3.15 }
-        ]},
-        { name: 'Ladbrokes', logo: getLogo('ladbrokes'), odds: [
-          { id: 'home_ladbrokes', value: 2.13 },
-          { id: 'draw_ladbrokes', value: 3.41 },
-          { id: 'away_ladbrokes', value: 3.21 }
-        ]},
-        { name: 'Marathonbet', logo: getLogo('marathonbet'), odds: [
-          { id: 'home_marathonbet', value: 2.24 },
-          { id: 'draw_marathonbet', value: 3.54 },
-          { id: 'away_marathonbet', value: 3.34 }
-        ]},
-        { name: 'Pinnacle', logo: getLogo('pinnacle'), odds: [
-          { id: 'home_pinnacle', value: 2.28 },
-          { id: 'draw_pinnacle', value: 3.58 },
-          { id: 'away_pinnacle', value: 3.38 }
-        ]},
-        { name: 'Unibet', logo: getLogo('unibet'), odds: [
-          { id: 'home_unibet', value: 2.11 },
-          { id: 'draw_unibet', value: 3.39 },
-          { id: 'away_unibet', value: 3.19 }
-        ]},
-        { name: 'William Hill', logo: getLogo('william-hill'), odds: [
-          { id: 'home_williamhill', value: 2.09 },
-          { id: 'draw_williamhill', value: 3.37 },
-          { id: 'away_williamhill', value: 3.17 }
-        ]},
-      ],
-      'Over / Under 2.5': [
-        { name: 'Bet365', logo: getLogo('bet365'), odds: [
-          { id: 'over_365', value: 2.00 },
-          { id: 'under_365', value: 1.90 }
-        ]},
-        { name: '1xBet', logo: getLogo('1xbet'), odds: [
-          { id: 'over_1xbet', value: 2.05 },
-          { id: 'under_1xbet', value: 1.88 }
-        ]},
-        { name: 'bwin', logo: getLogo('bwin'), odds: [
-          { id: 'over_bwin', value: 1.98 },
-          { id: 'under_bwin', value: 1.87 }
-        ]},
-        { name: 'Pinnacle', logo: getLogo('pinnacle'), odds: [
-          { id: 'over_pinnacle', value: 2.03 },
-          { id: 'under_pinnacle', value: 1.92 }
-        ]},
-      ]
-    };
-
-    const providers = providersData[marketName as keyof typeof providersData] || [];
+    }>;
     
     setModalData({
       isOpen: true,
       marketName,
       providers,
-      oddsLabels: oddsLabels || ['1', 'X', '2'],
+      oddsLabels: oddsLabels,
     });
   };
 
@@ -409,79 +507,31 @@ const OddsDetailScreen = () => {
     setModalData({ ...modalData, isOpen: false });
   };
 
-  const matchResultOdds = [
-    { id: 'home', value: 2.10, label: '1', trend: 'up' as const },
-    { id: 'draw', value: 3.40, label: 'X', trend: 'stable' as const },
-    { id: 'away', value: 3.20, label: '2', trend: 'down' as const },
-  ];
+  if (loading) {
+    return (
+      <LoadingContainer>
+        Loading odds data...
+      </LoadingContainer>
+    );
+  }
 
-  const overUnderOdds = [
-    { id: 'over', value: 1.95, label: 'Over 2.5', trend: 'up' as const },
-    { id: 'under', value: 1.85, label: 'Under 2.5', trend: 'down' as const },
-  ];
+  if (error) {
+    return (
+      <ErrorContainer>
+        Error loading odds: {error}
+      </ErrorContainer>
+    );
+  }
 
-  const altBettingProviders = [
-    {
-      provider: { 
-        name: 'Bet365', 
-        logo: getLogo('bet365'), 
-        alt: 'Bet365' 
-      },
-      odds: [
-        { id: 'home_365', value: 2.10, label: '1', trend: 'up' as const },
-        { id: 'draw_365', value: 3.40, label: 'X', trend: 'stable' as const },
-        { id: 'away_365', value: 3.20, label: '2', trend: 'down' as const },
-      ]
-    },
-    {
-      provider: { 
-        name: '10Bet', 
-        logo: getLogo('10bet'), 
-        alt: '10Bet' 
-      },
-      odds: [
-        { id: 'home_10bet', value: 2.08, label: '1', trend: 'up' as const },
-        { id: 'draw_10bet', value: 3.38, label: 'X', trend: 'stable' as const },
-        { id: 'away_10bet', value: 3.18, label: '2', trend: 'down' as const },
-      ]
-    },
-    {
-      provider: { 
-        name: '1xBet', 
-        logo: getLogo('1xbet'), 
-        alt: '1xBet' 
-      },
-      odds: [
-        { id: 'home_1xbet', value: 2.20, label: '1', trend: 'up' as const },
-        { id: 'draw_1xbet', value: 3.50, label: 'X', trend: 'stable' as const },
-        { id: 'away_1xbet', value: 3.30, label: '2', trend: 'down' as const },
-      ]
-    },
-    {
-      provider: { 
-        name: 'bwin', 
-        logo: getLogo('bwin'), 
-        alt: 'bwin' 
-      },
-      odds: [
-        { id: 'home_bwin', value: 2.12, label: '1', trend: 'up' as const },
-        { id: 'draw_bwin', value: 3.42, label: 'X', trend: 'stable' as const },
-        { id: 'away_bwin', value: 3.22, label: '2', trend: 'down' as const },
-      ]
-    },
-    {
-      provider: { 
-        name: 'Pinnacle', 
-        logo: getLogo('pinnacle'), 
-        alt: 'Pinnacle' 
-      },
-      odds: [
-        { id: 'home_pinnacle', value: 2.25, label: '1', trend: 'up' as const },
-        { id: 'draw_pinnacle', value: 3.55, label: 'X', trend: 'stable' as const },
-        { id: 'away_pinnacle', value: 3.35, label: '2', trend: 'down' as const },
-      ]
-    }
-  ];
+  if (!oddsData || !oddsData.bookmakers || oddsData.bookmakers.length === 0) {
+    return (
+      <Container>
+        <div style={{ textAlign: 'center', padding: '20px', color: '#6d747b' }}>
+          No odds available for this match
+        </div>
+      </Container>
+    );
+  }
 
   const findBestOdds = (oddsValues: number[]) => {
     const max = Math.max(...oddsValues);
@@ -491,60 +541,25 @@ const OddsDetailScreen = () => {
   return (
     <>
       <Container>
-        <div>
-          <SectionHeader>
-            <SectionTitle>Match Result (1X2)</SectionTitle>
-            <CompareButtonHeader onClick={() => handleCompareClick('Match Result', ['1', 'X', '2'])}>
-              Compare odds
-              <ChevronIcon />
-            </CompareButtonHeader>
-          </SectionHeader>
-          <OddsRow
-            odds={matchResultOdds.map(odd => ({
-              ...odd,
-              isSelected: selectedOdds.has(odd.id),
-            }))}
-            onOddClick={handleOddClick}
-          />
-        </div>
-
-        <div>
-          <SectionHeader>
-            <SectionTitle>Over / Under 2.5 Goals</SectionTitle>
-            <CompareButtonHeader onClick={() => handleCompareClick('Over / Under 2.5', ['Over', 'Under'])}>
-              Compare odds
-              <ChevronIcon />
-            </CompareButtonHeader>
-          </SectionHeader>
-          <OddsRow
-            odds={overUnderOdds.map(odd => ({
-              ...odd,
-              isSelected: selectedOdds.has(odd.id),
-            }))}
-            onOddClick={handleOddClick}
-          />
-        </div>
-
-        <div>
-          <SectionHeader>
-            <SectionTitle>Betting Providers Comparison</SectionTitle>
-            <CompareButtonHeader onClick={() => handleCompareClick('Match Result', ['1', 'X', '2'])}>
-              Compare odds
-              <ChevronIcon />
-            </CompareButtonHeader>
-          </SectionHeader>
-          {altBettingProviders.map((provider, index) => (
-            <OddsRowAlt
-              key={index}
-              bettingProvider={provider.provider}
-              odds={provider.odds.map(odd => ({
+        {availableMarkets.map((market, index) => (
+          <div key={index}>
+            <SectionHeader>
+              <SectionTitle>{market.displayName}</SectionTitle>
+              <CompareButtonHeader onClick={() => handleCompareClick(market.name, market.labels)}>
+                Compare odds
+                <ChevronIcon />
+              </CompareButtonHeader>
+            </SectionHeader>
+            <OddsRow
+              odds={market.odds.map(odd => ({
                 ...odd,
                 isSelected: selectedOdds.has(odd.id),
+                trend: 'stable' as const
               }))}
               onOddClick={handleOddClick}
             />
-          ))}
-        </div>
+          </div>
+        ))}
       </Container>
 
       <ModalOverlay $isOpen={modalData.isOpen} onClick={closeModal}>
@@ -580,6 +595,9 @@ const OddsDetailScreen = () => {
                       fill
                       sizes="60px"
                       style={{ objectFit: 'contain' }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
                     />
                   </ProviderLogoModal>
                   <ProviderOdds>

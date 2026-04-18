@@ -62,12 +62,12 @@ const ValuePercent = styled.div<{ $color: string }>`
 `
 
 const GoalLineProbability: React.FC<GoalLineProbabilityProps> = ({
-  overProbability = 45,
-  underProbability = 55,
+  overProbability = 50,
+  underProbability = 50,
   homeTeam = 'Home',
   awayTeam = 'Away',
-  homeColor = '#ef0107',
-  awayColor = '#034694',
+  homeColor = '#fc8d59',
+  awayColor = '#d73027',
   width = 500,
   height = 350,
 }) => {
@@ -96,18 +96,18 @@ const GoalLineProbability: React.FC<GoalLineProbabilityProps> = ({
       .startAngle(-Math.PI / 2)
       .endAngle(-Math.PI / 2 + (overProbability / 100) * Math.PI)
 
-    const underPath = svg.append('path')
+    svg.append('path')
       .attr('transform', `translate(${centerX}, ${centerY})`)
       .attr('d', underArc() as string)
-      .attr('fill', '#fc8d59')
+      .attr('fill', homeColor)
       .attr('cursor', 'pointer')
       .on('mouseenter', () => setHoveredValue(`Under 2.5: ${underProbability}%`))
       .on('mouseleave', () => setHoveredValue(null))
 
-    const overPath = svg.append('path')
+    svg.append('path')
       .attr('transform', `translate(${centerX}, ${centerY})`)
       .attr('d', overArc() as string)
-      .attr('fill', '#d73027')
+      .attr('fill', awayColor)
       .attr('cursor', 'pointer')
       .on('mouseenter', () => setHoveredValue(`Over 2.5: ${overProbability}%`))
       .on('mouseleave', () => setHoveredValue(null))
@@ -134,7 +134,7 @@ const GoalLineProbability: React.FC<GoalLineProbabilityProps> = ({
       .attr('y', centerY + 15)
       .attr('text-anchor', 'middle')
       .style('font-size', '22px')
-      .style('fill', '#d73027')
+      .style('fill', awayColor)
       .style('font-weight', 'bold')
       .text('2.5')
 
@@ -171,7 +171,7 @@ const GoalLineProbability: React.FC<GoalLineProbabilityProps> = ({
       }
     })
 
-  }, [overProbability, underProbability, width, height])
+  }, [overProbability, underProbability, width, height, homeColor, awayColor])
 
   return (
     <Wrapper>
@@ -186,13 +186,13 @@ const GoalLineProbability: React.FC<GoalLineProbabilityProps> = ({
       <svg ref={svgRef} width={width} height={height} />
       
       <ValueDisplay>
-        <ValueCard $color="#fc8d59">
+        <ValueCard $color={homeColor}>
           <ValueLabel>UNDER 2.5 GOALS</ValueLabel>
-          <ValuePercent $color="#fc8d59">{underProbability}%</ValuePercent>
+          <ValuePercent $color={homeColor}>{underProbability}%</ValuePercent>
         </ValueCard>
-        <ValueCard $color="#d73027">
+        <ValueCard $color={awayColor}>
           <ValueLabel>OVER 2.5 GOALS</ValueLabel>
-          <ValuePercent $color="#d73027">{overProbability}%</ValuePercent>
+          <ValuePercent $color={awayColor}>{overProbability}%</ValuePercent>
         </ValueCard>
       </ValueDisplay>
     </Wrapper>

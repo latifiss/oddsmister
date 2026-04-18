@@ -98,7 +98,7 @@ const TeamBadge = styled.img`
 `
 
 const WinProbabilityMeter: React.FC<WinProbabilityMeterProps> = ({
-  homeProbability = 55,
+  homeProbability = 45,
   awayProbability = 25,
   drawProbability = 20,
   homeTeam = 'Home Team',
@@ -114,9 +114,9 @@ const WinProbabilityMeter: React.FC<WinProbabilityMeterProps> = ({
   const svgRef = useRef<SVGSVGElement>(null)
 
   const total = homeProbability + awayProbability + drawProbability
-  const normalizedHome = (homeProbability / total) * 100
-  const normalizedAway = (awayProbability / total) * 100
-  const normalizedDraw = (drawProbability / total) * 100
+  const normalizedHome = total > 0 ? (homeProbability / total) * 100 : 33.33
+  const normalizedAway = total > 0 ? (awayProbability / total) * 100 : 33.33
+  const normalizedDraw = total > 0 ? (drawProbability / total) * 100 : 33.34
 
   useEffect(() => {
     if (!svgRef.current) return

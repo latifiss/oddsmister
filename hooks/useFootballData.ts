@@ -48,3 +48,17 @@ export function useOdds(fixtureId: number | null) {
     isError: error
   };
 }
+
+export function usePredictions(fixtureId: number | null) {
+  const { data, error } = useSWR(
+    fixtureId ? `/api/predictions?fixtureId=${fixtureId}` : null,
+    fetcher,
+    { revalidateOnFocus: false, revalidateInterval: 43200000 }
+  );
+
+  return {
+    prediction: data?.response?.[0] || null,
+    isLoading: !error && !data,
+    isError: error
+  };
+}

@@ -2,7 +2,6 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { useMatches } from '@/hooks/useFootballData';
 import PredictionScoreItem from './predictionScoreItem';
 import { distributeCharts } from '@/utils/chartDistributor';
 
@@ -34,15 +33,46 @@ const getMatchStatus = (status: string): string => {
   return 'not_started';
 };
 
-const PredictionFeed = () => {
-  const { matches, isLoading, isError } = useMatches();
+const generateRandomColor = (): string => {
+  const hue = Math.floor(Math.random() * 360);
+  return `hsl(${hue}, 70%, 50%)`;
+};
+
+const teamColorCache = new Map<string, string>();
+
+const getTeamColor = (teamName: string): string => {
+  if (teamColorCache.has(teamName)) {
+    return teamColorCache.get(teamName)!;
+  }
+  
+  const color = generateRandomColor();
+  teamColorCache.set(teamName, color);
+  return color;
+};
+
+interface PredictionFeedProps {
+  initialPredictions?: any[];
+  limit?: number;
+  matches?: any[];
+  isLoading?: boolean;
+  isError?: boolean;
+}
+
+const PredictionFeed = ({ 
+  initialPredictions = [], 
+  limit = 5,
+  matches: externalMatches,
+  isLoading: externalLoading,
+  isError: externalError
+}: PredictionFeedProps) => {
   const [predictionsData, setPredictionsData] = useState<Map<number, any>>(new Map());
-  const [loadingPredictions, setLoadingPredictions] = useState(false);
+  const [loadingPredictions, setLoadingPredictions] = useState(initialPredictions.length === 0);
+  const [fetched, setFetched] = useState(initialPredictions.length > 0);
 
   const selectedMatches = useMemo(() => {
-    if (!matches || !matches.length) return [];
+    if (!externalMatches || !externalMatches.length) return [];
     
-    const notStartedMatches = matches.filter(
+    const notStartedMatches = externalMatches.filter(
       match => getMatchStatus(match.fixture.status.short) === 'not_started'
     );
     
@@ -52,74 +82,108 @@ const PredictionFeed = () => {
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     
-    return shuffled.slice(0, 10);
-  }, [matches]);
-
-  const predictionsWithCharts = useMemo(() => {
-    const chartDistribution = distributeCharts(selectedMatches.length);
-    
-    return selectedMatches.map((match, index) => ({
-      match,
-      chartType: chartDistribution[index],
-      prediction: predictionsData.get(match.fixture.id)
-    }));
-  }, [selectedMatches, predictionsData]);
+    return shuffled.slice(0, limit);
+  }, [externalMatches, limit]);
 
   useEffect(() => {
+    if (initialPredictions.length > 0 && !fetched) {
+      const predictions = new Map();
+      initialPredictions.forEach(pred => {
+        if (pred && pred.fixture?.id) {
+          predictions.set(pred.fixture.id, pred);
+        }
+      });
+      setPredictionsData(predictions);
+      setFetched(true);
+      setLoadingPredictions(false);
+    }
+  }, [initialPredictions, fetched]);
+
+  useEffect(() => {
+    if (fetched) return;
+    if (!selectedMatches.length) return;
+    
     const fetchPredictions = async () => {
-      if (!selectedMatches.length) return;
-      
       setLoadingPredictions(true);
       const predictions = new Map();
       
-      for (const match of selectedMatches) {
+      const fetchPromises = selectedMatches.map(async (match) => {
         try {
           const response = await fetch(`/api/predictions?fixtureId=${match.fixture.id}`);
           const data = await response.json();
           if (data.response && data.response[0]) {
-            predictions.set(match.fixture.id, data.response[0]);
+            return { id: match.fixture.id, data: data.response[0] };
           }
         } catch (error) {
           console.error(`Failed to fetch prediction for ${match.fixture.id}:`, error);
+          return null;
         }
-      }
+      });
+      
+      const results = await Promise.all(fetchPromises);
+      
+      results.forEach(result => {
+        if (result) {
+          predictions.set(result.id, result.data);
+        }
+      });
       
       setPredictionsData(predictions);
       setLoadingPredictions(false);
+      setFetched(true);
     };
     
     fetchPredictions();
-  }, [selectedMatches]);
+  }, [selectedMatches, fetched]);
 
-  if (isLoading || loadingPredictions) return <LoadingSpinner>Loading predictions...</LoadingSpinner>;
-  if (isError) return <LoadingSpinner>Error loading matches</LoadingSpinner>;
+  if (externalLoading) {
+    return <LoadingSpinner>Loading matches...</LoadingSpinner>;
+  }
   
-  if (!predictionsWithCharts.length) {
+  if (externalError) {
+    return <LoadingSpinner>Error loading matches</LoadingSpinner>;
+  }
+  
+  if (loadingPredictions && !fetched) {
+    return <LoadingSpinner>Loading predictions...</LoadingSpinner>;
+  }
+  
+  if (!selectedMatches.length) {
     return <NoMatchesMessage>No upcoming matches available for predictions today</NoMatchesMessage>;
   }
 
+  const chartDistribution = distributeCharts(selectedMatches.length);
+
   return (
     <ScoreWrapper>
-      {predictionsWithCharts.map(({ match, chartType, prediction }) => (
-        <PredictionScoreItem
-          key={match.fixture.id}
-          fixtureId={match.fixture.id}
-          homeTeam={match.teams.home.name}
-          awayTeam={match.teams.away.name}
-          homeImage={match.teams.home.logo}
-          awayImage={match.teams.away.logo}
-          date={new Date(match.fixture.date).toLocaleDateString()}
-          time={new Date(match.fixture.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          homeScore={match.goals.home?.toString()}
-          awayScore={match.goals.away?.toString()}
-          status={match.fixture.status.short}
-          minute={match.fixture.status.elapsed}
-          chartType={chartType}
-          prediction={prediction}
-        />
-      ))}
+      {selectedMatches.map((match, index) => {
+        const prediction = predictionsData.get(match.fixture.id);
+        const homeColor = getTeamColor(match.teams.home.name);
+        const awayColor = getTeamColor(match.teams.away.name);
+        
+        return (
+          <PredictionScoreItem
+            key={match.fixture.id}
+            fixtureId={match.fixture.id}
+            homeTeam={match.teams.home.name}
+            awayTeam={match.teams.away.name}
+            homeImage={match.teams.home.logo}
+            awayImage={match.teams.away.logo}
+            date={new Date(match.fixture.date).toLocaleDateString()}
+            time={new Date(match.fixture.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            homeScore={match.goals.home?.toString()}
+            awayScore={match.goals.away?.toString()}
+            status={match.fixture.status.short}
+            minute={match.fixture.status.elapsed}
+            chartType={chartDistribution[index]}
+            prediction={prediction}
+            homeColor={homeColor}
+            awayColor={awayColor}
+          />
+        );
+      })}
     </ScoreWrapper>
   );
-}
+};
 
 export default PredictionFeed;

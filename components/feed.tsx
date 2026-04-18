@@ -1,7 +1,7 @@
 'use client';
 
 import { useMatches, useLiveMatches } from '@/hooks/useFootballData';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import styled from 'styled-components';
 import ScoreBoard from './scoreBoard';
 import Image from 'next/image';
@@ -80,14 +80,8 @@ const NoMatchesMessage = styled.div`
 interface FeedProps {
   selectedDate?: Date;
   selectedCompetition?: string | null;
-}
-
-interface GroupedMatch {
-  leagueId: number;
-  leagueName: string;
-  leagueLogo: string;
-  country: string;
-  matches: any[];
+  initialMatches?: any[];
+  initialGroupedMatches?: any[];
 }
 
 const competitionLeagueIds: Record<string, number> = {
@@ -103,12 +97,35 @@ const competitionLeagueIds: Record<string, number> = {
   'Conference League': 128,
 };
 
-export default function Feed({ selectedDate, selectedCompetition }: FeedProps) {
+export default function Feed({ 
+  selectedDate, 
+  selectedCompetition,
+  initialMatches = [],
+  initialGroupedMatches = []
+}: FeedProps) {
   const dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : undefined;
   const { matches, isLoading, isError } = useMatches(dateStr);
   const { liveMatches } = useLiveMatches();
+  const [hasInitialData, setHasInitialData] = useState(true);
+  const [displayMatches, setDisplayMatches] = useState(initialGroupedMatches);
+
+  useEffect(() => {
+    if (!isLoading && !isError && (matches.length > 0 || liveMatches.length > 0)) {
+      setHasInitialData(false);
+    }
+  }, [matches, liveMatches, isLoading, isError]);
 
   const filteredAndGroupedMatches = useMemo(() => {
+    if (hasInitialData && initialGroupedMatches.length > 0) {
+      if (selectedCompetition) {
+        const filtered = initialGroupedMatches.filter(group => 
+          group.leagueName === selectedCompetition
+        );
+        return { groups: filtered, hasMatches: filtered.length > 0 };
+      }
+      return { groups: initialGroupedMatches, hasMatches: initialGroupedMatches.length > 0 };
+    }
+
     const allMatches = [...liveMatches, ...matches];
     const uniqueMatches = Array.from(new Map(allMatches.map(m => [m.fixture.id, m])).values());
     
@@ -132,9 +149,9 @@ export default function Feed({ selectedDate, selectedCompetition }: FeedProps) {
       return { groups: [], hasMatches: false };
     }
     
-    const groups: Record<number, GroupedMatch> = {};
-    const priorityGroups: GroupedMatch[] = [];
-    const otherGroups: GroupedMatch[] = [];
+    const groups: Record<number, any> = {};
+    const priorityGroups: any[] = [];
+    const otherGroups: any[] = [];
     
     if (selectedCompetition) {
       filteredMatches.forEach((match) => {
@@ -183,10 +200,10 @@ export default function Feed({ selectedDate, selectedCompetition }: FeedProps) {
     otherGroups.sort((a, b) => a.leagueName.localeCompare(b.leagueName));
     
     return { groups: [...priorityGroups, ...otherGroups], hasMatches: uniqueMatches.length > 0 };
-  }, [matches, liveMatches, selectedCompetition]);
+  }, [matches, liveMatches, selectedCompetition, hasInitialData, initialGroupedMatches]);
 
-  if (isLoading) return <LoadingSpinner>Loading matches...</LoadingSpinner>;
-  if (isError) return <LoadingSpinner>Error loading matches</LoadingSpinner>;
+  if (isLoading && !hasInitialData) return <LoadingSpinner>Loading matches...</LoadingSpinner>;
+  if (isError && !hasInitialData) return <LoadingSpinner>Error loading matches</LoadingSpinner>;
 
   if (selectedCompetition && !filteredAndGroupedMatches.hasMatches) {
     return (

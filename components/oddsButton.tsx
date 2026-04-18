@@ -17,11 +17,21 @@ interface OddButtonProps {
 const ButtonContainer = styled.div<{ $variant: 'single' | 'double' | 'triple' }>`
   display: flex;
   flex: 1;
+  min-width: 0; /* Allows flex item to shrink */
   min-width: ${({ $variant }) => {
     if ($variant === 'single') return '100%';
     if ($variant === 'double') return 'calc(50% - 4px)';
     return 'calc(33.333% - 6px)';
   }};
+  
+  /* Responsive breakpoints */
+  @media only screen and (max-width: 480px) {
+    min-width: ${({ $variant }) => {
+      if ($variant === 'single') return '100%';
+      if ($variant === 'double') return 'calc(50% - 4px)';
+      return 'calc(50% - 4px)'; /* On mobile, triple becomes double row */
+    }};
+  }
 `;
 
 const OddButtonStyled = styled.button<{ 
@@ -34,7 +44,10 @@ const OddButtonStyled = styled.button<{
   justify-content: center;
   gap: 4px;
   width: 100%;
-  height: 32px;
+  min-width: 0; /* Allows button to shrink */
+  height: auto;
+  min-height: 32px;
+  padding: 6px 8px;
   border: 1px solid ${({ theme, $isSelected, $isLocked }) => {
     if ($isLocked) return theme.colors?.border || '#e0e0e0';
     if ($isSelected) return '#2db84b';
@@ -61,6 +74,15 @@ const OddButtonStyled = styled.button<{
   cursor: ${({ $isLocked }) => $isLocked ? 'not-allowed' : 'pointer'};
   transition: all 0.2s ease;
   opacity: ${({ $isLocked }) => $isLocked ? 0.6 : 1};
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  /* Allow text to wrap on very small screens */
+  @media only screen and (max-width: 380px) {
+    white-space: normal;
+    word-break: keep-all;
+    padding: 4px 6px;
+  }
 
   &:hover {
     border-color: ${({ theme, $isLocked, $isSelected }) => {
@@ -83,6 +105,7 @@ const OddButtonStyled = styled.button<{
 const OddsValue = styled.span<{ $trend?: 'up' | 'down' | 'stable' }>`
   color: inherit;
   font-weight: 700;
+  flex-shrink: 0;
 `;
 
 const TrendIcon = styled.span<{ $trend: 'up' | 'down' | 'stable' }>`
@@ -94,6 +117,7 @@ const TrendIcon = styled.span<{ $trend: 'up' | 'down' | 'stable' }>`
     if ($trend === 'down') return '#f80000';
     return '#999';
   }};
+  flex-shrink: 0;
 `;
 
 const LockIcon = styled.span`
@@ -102,6 +126,7 @@ const LockIcon = styled.span`
   font-size: 10px;
   color: #999;
   margin-left: 2px;
+  flex-shrink: 0;
 `;
 
 const LabelText = styled.span`
@@ -110,6 +135,15 @@ const LabelText = styled.span`
   color: inherit;
   margin-right: 4px;
   color: ${({ theme }) => theme.colors.half};
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 50px;
+
+  @media only screen and (max-width: 380px) {
+    white-space: normal;
+    max-width: none;
+  }
 `;
 
 const ChevronUpIcon = () => (
