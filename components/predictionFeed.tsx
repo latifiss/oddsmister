@@ -50,6 +50,45 @@ const getTeamColor = (teamName: string): string => {
   return color;
 };
 
+const SELECTED_FIXTURES_KEY = 'selected_predictions_fixtures';
+const SELECTED_FIXTURES_DATE_KEY = 'selected_predictions_date';
+const CHART_DISTRIBUTION_KEY = 'selected_predictions_charts';
+
+const getTodayDateString = (): string => {
+  return new Date().toISOString().split('T')[0];
+};
+
+const getStoredSelectedFixtures = (): { fixtureIds: number[]; chartDistribution: string[] } | null => {
+  try {
+    const storedDate = localStorage.getItem(SELECTED_FIXTURES_DATE_KEY);
+    const today = getTodayDateString();
+    
+    if (storedDate === today) {
+      const storedFixtures = localStorage.getItem(SELECTED_FIXTURES_KEY);
+      const storedCharts = localStorage.getItem(CHART_DISTRIBUTION_KEY);
+      if (storedFixtures && storedCharts) {
+        return {
+          fixtureIds: JSON.parse(storedFixtures),
+          chartDistribution: JSON.parse(storedCharts)
+        };
+      }
+    }
+  } catch (error) {
+    console.error('Failed to read stored fixtures:', error);
+  }
+  return null;
+};
+
+const storeSelectedFixtures = (fixtureIds: number[], chartDistribution: string[]): void => {
+  try {
+    localStorage.setItem(SELECTED_FIXTURES_KEY, JSON.stringify(fixtureIds));
+    localStorage.setItem(CHART_DISTRIBUTION_KEY, JSON.stringify(chartDistribution));
+    localStorage.setItem(SELECTED_FIXTURES_DATE_KEY, getTodayDateString());
+  } catch (error) {
+    console.error('Failed to store fixtures:', error);
+  }
+};
+
 interface PredictionFeedProps {
   initialPredictions?: any[];
   limit?: number;
@@ -68,23 +107,56 @@ const PredictionFeed = ({
   const [predictionsData, setPredictionsData] = useState<Map<number, any>>(new Map());
   const [loadingPredictions, setLoadingPredictions] = useState(initialPredictions.length === 0);
   const [fetched, setFetched] = useState(initialPredictions.length > 0);
+  const [storedChartDistribution, setStoredChartDistribution] = useState<string[] | null>(null);
 
-  const selectedMatches = useMemo(() => {
-    if (!externalMatches || !externalMatches.length) return [];
+  const { selectedMatches, chartDistribution } = useMemo(() => {
+    if (!externalMatches || !externalMatches.length) {
+      return { selectedMatches: [], chartDistribution: [] };
+    }
     
     const notStartedMatches = externalMatches.filter(
       match => getMatchStatus(match.fixture.status.short) === 'not_started'
     );
     
+    // Check if we have stored fixtures for today
+    const stored = getStoredSelectedFixtures();
+    
+    if (stored && stored.fixtureIds.length > 0) {
+      // Use stored fixtures
+      const selected = stored.fixtureIds
+        .map(id => notStartedMatches.find(match => match.fixture.id === id))
+        .filter(match => match !== undefined);
+      
+      if (selected.length === limit) {
+        return { 
+          selectedMatches: selected, 
+          chartDistribution: stored.chartDistribution 
+        };
+      }
+    }
+    
+    // If no stored fixtures or not enough matches, select new ones
     const shuffled = [...notStartedMatches];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     
-    return shuffled.slice(0, limit);
+    const selected = shuffled.slice(0, limit);
+    const newChartDistribution = distributeCharts(selected.length);
+    
+    // Store the selected fixture IDs and chart distribution for today
+    if (selected.length > 0) {
+      storeSelectedFixtures(selected.map(match => match.fixture.id), newChartDistribution);
+    }
+    
+    return { 
+      selectedMatches: selected, 
+      chartDistribution: newChartDistribution 
+    };
   }, [externalMatches, limit]);
 
+  // Use initial predictions from server if available
   useEffect(() => {
     if (initialPredictions.length > 0 && !fetched) {
       const predictions = new Map();
@@ -99,6 +171,7 @@ const PredictionFeed = ({
     }
   }, [initialPredictions, fetched]);
 
+  // Fetch predictions via API (Upstash will cache them automatically)
   useEffect(() => {
     if (fetched) return;
     if (!selectedMatches.length) return;
@@ -112,21 +185,14 @@ const PredictionFeed = ({
           const response = await fetch(`/api/predictions?fixtureId=${match.fixture.id}`);
           const data = await response.json();
           if (data.response && data.response[0]) {
-            return { id: match.fixture.id, data: data.response[0] };
+            predictions.set(match.fixture.id, data.response[0]);
           }
         } catch (error) {
           console.error(`Failed to fetch prediction for ${match.fixture.id}:`, error);
-          return null;
         }
       });
       
-      const results = await Promise.all(fetchPromises);
-      
-      results.forEach(result => {
-        if (result) {
-          predictions.set(result.id, result.data);
-        }
-      });
+      await Promise.all(fetchPromises);
       
       setPredictionsData(predictions);
       setLoadingPredictions(false);
@@ -151,8 +217,6 @@ const PredictionFeed = ({
   if (!selectedMatches.length) {
     return <NoMatchesMessage>No upcoming matches available for predictions today</NoMatchesMessage>;
   }
-
-  const chartDistribution = distributeCharts(selectedMatches.length);
 
   return (
     <ScoreWrapper>

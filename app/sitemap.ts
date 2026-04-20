@@ -1,44 +1,32 @@
 import { MetadataRoute } from "next";
 
+const matchIds = [1193838, 1208021, 1535339]; 
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
+  const baseUrl = "https://oddsmister.vercel.app";
 
-  // Static pages (hourly update)
-  const hourlyPages: MetadataRoute.Sitemap = [
-    "",
-    "home",
-    "business",
-    "sports",
-    "tech",
-    "entertainment",
-    "africa",
-    "world",
-  ].map((path) => ({
-    url: `https://www.theghanaianweb.com/${path}`,
-    lastModified: now,
-    changeFrequency: "hourly" as const, // ✅ fixed
-    priority: 0.9,
-  }));
-
-  // Static pages (update every 2 days → "weekly" is closest sitemap option)
-  const twoDayPages: MetadataRoute.Sitemap = [
-    "features",
-    "reviews",
-    "music",
-    "movie",
-  ].map((path) => ({
-    url: `https://www.theghanaianweb.com/${path}`,
-    lastModified: now,
-    changeFrequency: "weekly" as const, // ✅ fixed
-    priority: 0.7,
-  }));
-
-  // Dynamic article detail pages (for later DB/API fetch)
-  const dynamicArticles: MetadataRoute.Sitemap = [];
-
-  return [
-    ...hourlyPages,
-    ...twoDayPages,
-    ...dynamicArticles,
+  const staticPages: MetadataRoute.Sitemap = [
+    {
+      url: baseUrl,
+      lastModified: now,
+      changeFrequency: "hourly" as const,
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/livescore`,
+      lastModified: now,
+      changeFrequency: "hourly" as const,
+      priority: 0.9,
+    },
   ];
+
+  const matchPages: MetadataRoute.Sitemap = matchIds.map((id) => ({
+    url: `${baseUrl}/match/${id}`,
+    lastModified: now,
+    changeFrequency: "hourly" as const,
+    priority: 0.8,
+  }));
+
+  return [...staticPages, ...matchPages];
 }

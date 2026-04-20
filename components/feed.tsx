@@ -84,18 +84,7 @@ interface FeedProps {
   initialGroupedMatches?: any[];
 }
 
-const competitionLeagueIds: Record<string, number> = {
-  'Premier League': 39,
-  'La Liga': 140,
-  'Bundesliga': 78,
-  'Serie A': 135,
-  'Ligue 1': 61,
-  'MLS': 253,
-  'Uefa Champions League': 2,
-  'World Cup': 1,
-  'Europa League': 3,
-  'Conference League': 128,
-};
+const priorityLeagueIds = [39, 140, 78, 135, 61, 2, 3, 848];
 
 export default function Feed({ 
   selectedDate, 
@@ -107,7 +96,6 @@ export default function Feed({
   const { matches, isLoading, isError } = useMatches(dateStr);
   const { liveMatches } = useLiveMatches();
   const [hasInitialData, setHasInitialData] = useState(true);
-  const [displayMatches, setDisplayMatches] = useState(initialGroupedMatches);
 
   useEffect(() => {
     if (!isLoading && !isError && (matches.length > 0 || liveMatches.length > 0)) {
@@ -117,13 +105,33 @@ export default function Feed({
 
   const filteredAndGroupedMatches = useMemo(() => {
     if (hasInitialData && initialGroupedMatches.length > 0) {
+      let filtered = [...initialGroupedMatches];
+      
       if (selectedCompetition) {
-        const filtered = initialGroupedMatches.filter(group => 
-          group.leagueName === selectedCompetition
-        );
-        return { groups: filtered, hasMatches: filtered.length > 0 };
+        const leagueId = parseInt(selectedCompetition);
+        filtered = filtered.filter(group => group.leagueId === leagueId);
       }
-      return { groups: initialGroupedMatches, hasMatches: initialGroupedMatches.length > 0 };
+      
+      filtered.sort((a: any, b: any) => {
+        const aIndex = priorityLeagueIds.indexOf(a.leagueId);
+        const bIndex = priorityLeagueIds.indexOf(b.leagueId);
+        
+        if (aIndex !== -1 && bIndex !== -1) {
+          return aIndex - bIndex;
+        }
+        
+        if (aIndex !== -1) {
+          return -1;
+        }
+        
+        if (bIndex !== -1) {
+          return 1;
+        }
+        
+        return a.leagueName.localeCompare(b.leagueName);
+      });
+      
+      return { groups: filtered, hasMatches: filtered.length > 0 };
     }
 
     const allMatches = [...liveMatches, ...matches];
@@ -132,17 +140,8 @@ export default function Feed({
     let filteredMatches = uniqueMatches;
     
     if (selectedCompetition) {
-      const targetLeagueId = competitionLeagueIds[selectedCompetition];
-      if (targetLeagueId) {
-        filteredMatches = uniqueMatches.filter(
-          match => match.league.id === targetLeagueId
-        );
-      } else {
-        const targetName = selectedCompetition;
-        filteredMatches = uniqueMatches.filter(
-          match => match.league.name === targetName
-        );
-      }
+      const leagueId = parseInt(selectedCompetition);
+      filteredMatches = uniqueMatches.filter(match => match.league.id === leagueId);
     }
     
     if (filteredMatches.length === 0) {
@@ -150,28 +149,7 @@ export default function Feed({
     }
     
     const groups: Record<number, any> = {};
-    const priorityGroups: any[] = [];
-    const otherGroups: any[] = [];
-    
-    if (selectedCompetition) {
-      filteredMatches.forEach((match) => {
-        const leagueId = match.league.id;
-        if (!groups[leagueId]) {
-          groups[leagueId] = {
-            leagueId,
-            leagueName: match.league.name,
-            leagueLogo: match.league.logo,
-            country: match.league.country || '',
-            matches: []
-          };
-        }
-        groups[leagueId].matches.push(match);
-      });
-      
-      return { groups: Object.values(groups), hasMatches: true };
-    }
-    
-    uniqueMatches.forEach((match) => {
+    filteredMatches.forEach((match) => {
       const leagueId = match.league.id;
       if (!groups[leagueId]) {
         groups[leagueId] = {
@@ -185,21 +163,28 @@ export default function Feed({
       groups[leagueId].matches.push(match);
     });
     
-    const priorityLeagueIds = Object.values(competitionLeagueIds);
+    const groupsArray = Object.values(groups);
     
-    Object.values(groups).forEach(group => {
-      const isPriority = priorityLeagueIds.includes(group.leagueId);
-      if (isPriority) {
-        priorityGroups.push(group);
-      } else {
-        otherGroups.push(group);
+    groupsArray.sort((a: any, b: any) => {
+      const aIndex = priorityLeagueIds.indexOf(a.leagueId);
+      const bIndex = priorityLeagueIds.indexOf(b.leagueId);
+      
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
       }
+      
+      if (aIndex !== -1) {
+        return -1;
+      }
+      
+      if (bIndex !== -1) {
+        return 1;
+      }
+      
+      return a.leagueName.localeCompare(b.leagueName);
     });
     
-    priorityGroups.sort((a, b) => a.leagueName.localeCompare(b.leagueName));
-    otherGroups.sort((a, b) => a.leagueName.localeCompare(b.leagueName));
-    
-    return { groups: [...priorityGroups, ...otherGroups], hasMatches: uniqueMatches.length > 0 };
+    return { groups: groupsArray, hasMatches: groupsArray.length > 0 };
   }, [matches, liveMatches, selectedCompetition, hasInitialData, initialGroupedMatches]);
 
   if (isLoading && !hasInitialData) return <LoadingSpinner>Loading matches...</LoadingSpinner>;
@@ -208,7 +193,7 @@ export default function Feed({
   if (selectedCompetition && !filteredAndGroupedMatches.hasMatches) {
     return (
       <NoMatchesMessage>
-        No {selectedCompetition} matches available today
+        No matches available
       </NoMatchesMessage>
     );
   }

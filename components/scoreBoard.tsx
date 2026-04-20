@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import ConnectedTags from './connectedTags';
 import Image from 'next/image';
@@ -68,7 +68,7 @@ const MarkerRow = styled.div<{ $scale?: number }>`
   }
 `;
 
-const Bottom = styled.div`
+const Bottom = styled.div<{ $hasOdds?: boolean }>`
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -236,6 +236,7 @@ interface ScoreProps {
   homeOdds?: number;
   drawOdds?: number;
   awayOdds?: number;
+  showOdds?: boolean;
 }
 
 const getMatchStatus = (status: MatchStatus): 'live' | 'ended' | 'not_started' | 'halftime' | 'cancelled' | 'postponed' => {
@@ -261,34 +262,42 @@ const ScoreBoard = ({
   status: rawStatus, 
   minute,
   isSuperboostAvailable = false,
-  homeOdds = (Math.random() * 2 + 1).toFixed(2),
-  drawOdds = (Math.random() * 2 + 2).toFixed(2),
-  awayOdds = (Math.random() * 2 + 1.5).toFixed(2),
+  homeOdds,
+  drawOdds,
+  awayOdds,
+  showOdds = true,
 }: ScoreProps) => {
   const status = getMatchStatus(rawStatus);
+  const [randomLeft, setRandomLeft] = useState(0);
+  const [randomRight, setRandomRight] = useState(0);
+
+  const hasOdds = showOdds && homeOdds !== undefined && drawOdds !== undefined && awayOdds !== undefined;
+
+  useEffect(() => {
+    setRandomLeft(Math.random());
+    setRandomRight(Math.random());
+  }, [fixtureId]);
   
   const getLeftTag = () => {
-    const random = Math.random();
-    
     if (status !== 'live' && status !== 'not_started') {
       return null;
     }
     
     if (status === 'live') {
-      if (random < 0.15) {
+      if (randomLeft < 0.15) {
         return <HotTag />;
-      } else if (random < 0.25) {
+      } else if (randomLeft < 0.25) {
         return <BestOddTag />;
-      } else if (random < 0.35) {
+      } else if (randomLeft < 0.35) {
         return <ConnectedTags />;
       }
       return null;
     }
     
     if (status === 'not_started') {
-      if (random < 0.2) {
+      if (randomLeft < 0.2) {
         return <ConnectedTags />;
-      } else if (random < 0.3) {
+      } else if (randomLeft < 0.3) {
         return <BestOddTag />;
       }
       return null;
@@ -303,15 +312,13 @@ const ScoreBoard = ({
     }
     
     if (isSuperboostAvailable && status === 'live') {
-      const random = Math.random();
-      if (random < 0.3) {
+      if (randomRight < 0.3) {
         return <Superboost />;
       }
     }
     
     if (isSuperboostAvailable && status === 'not_started') {
-      const random = Math.random();
-      if (random < 0.15) {
+      if (randomRight < 0.15) {
         return <Superboost />;
       }
     }
@@ -349,15 +356,15 @@ const ScoreBoard = ({
     <InnerAlt>
       <Odd>
         <OddSign>1</OddSign>
-        <span>{homeOdds}</span>
+        <span>{homeOdds!.toFixed(2)}</span>
       </Odd>
       <Odd>
         <OddSign>X</OddSign>
-        <span>{drawOdds}</span>
+        <span>{drawOdds!.toFixed(2)}</span>
       </Odd>
       <Odd>
         <OddSign>2</OddSign>
-        <span>{awayOdds}</span>
+        <span>{awayOdds!.toFixed(2)}</span>
       </Odd>
     </InnerAlt>
   );
@@ -380,7 +387,7 @@ const ScoreBoard = ({
       <Component href={`/match/${fixtureId}`}>
         {renderHeader()}
         <Content>
-          <Bottom>
+          <Bottom $hasOdds={hasOdds}>
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
@@ -396,7 +403,7 @@ const ScoreBoard = ({
                 <TeamText title={awayTeam}>{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
-            {renderOddsRow()}
+            {hasOdds && renderOddsRow()}
           </Bottom>
         </Content>
       </Component>
@@ -408,7 +415,7 @@ const ScoreBoard = ({
       <Component href={`/match/${fixtureId}`}>
         {renderHeader()}
         <Content>
-          <Bottom>
+          <Bottom $hasOdds={hasOdds}>
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
@@ -427,7 +434,7 @@ const ScoreBoard = ({
                 <TeamText title={awayTeam}>{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
-            {renderOddsRow()}
+            {hasOdds && renderOddsRow()}
           </Bottom>
         </Content>
       </Component>
@@ -439,7 +446,7 @@ const ScoreBoard = ({
       <Component href={`/match/${fixtureId}`}>
         {renderHeader()}
         <Content>
-          <Bottom>
+          <Bottom $hasOdds={hasOdds}>
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
@@ -455,7 +462,7 @@ const ScoreBoard = ({
                 <TeamText title={awayTeam}>{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
-            {renderOddsRow()}
+            {hasOdds && renderOddsRow()}
           </Bottom>
         </Content>
       </Component>
@@ -467,7 +474,7 @@ const ScoreBoard = ({
       <Component href={`/match/${fixtureId}`}>
         {renderHeader()}
         <Content>
-          <Bottom>
+          <Bottom $hasOdds={hasOdds}>
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
@@ -494,7 +501,7 @@ const ScoreBoard = ({
       <Component href={`/match/${fixtureId}`}>
         {renderHeader()}
         <Content>
-          <Bottom>
+          <Bottom $hasOdds={hasOdds}>
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
@@ -521,7 +528,7 @@ const ScoreBoard = ({
       <Component href={`/match/${fixtureId}`}>
         {renderHeader()}
         <Content>
-          <Bottom>
+          <Bottom $hasOdds={hasOdds}>
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />

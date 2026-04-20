@@ -6,7 +6,38 @@ interface PageProps {
   searchParams?: Promise<{ date?: string; competition?: string }>;
 }
 
-async function getMatches(date?: string) {
+interface Match {
+  fixture: {
+    id: number;
+    date: string;
+    status: { short: string; elapsed: number };
+    venue: { name: string; city: string };
+    referee: string | null;
+  };
+  teams: {
+    home: { name: string; logo: string; redCard?: number };
+    away: { name: string; logo: string; redCard?: number };
+  };
+  goals: { home: number | null; away: number | null };
+  league: { id: number; name: string; logo: string; country: string; season: number; round: string };
+}
+
+interface GroupedMatch {
+  leagueId: number;
+  leagueName: string;
+  leagueLogo: string;
+  country: string;
+  matches: Match[];
+}
+
+interface PredictionResult {
+  fixtureId: number;
+  prediction: unknown;
+}
+
+const priorityLeagueIds = [39, 140, 78, 135, 61, 2, 3, 848];
+
+async function getMatches(date?: string): Promise<Match[]> {
   try {
     const dateStr = date || new Date().toISOString().split('T')[0];
     const data = await apiClient.getCached('fixtures', { date: dateStr }, { ttl: 300 });
@@ -17,7 +48,7 @@ async function getMatches(date?: string) {
   }
 }
 
-async function getLiveMatches() {
+async function getLiveMatches(): Promise<Match[]> {
   try {
     const data = await apiClient.getCached('fixtures', { live: 'all' }, { ttl: 60 });
     return data.response || [];
@@ -27,9 +58,9 @@ async function getLiveMatches() {
   }
 }
 
-async function getAllPredictions(matches: any[]) {
+async function getAllPredictions(matches: Match[]): Promise<Record<number, unknown>> {
   try {
-    const fetchPromises = matches.slice(0, 10).map(async (match: any) => {
+    const fetchPromises = matches.slice(0, 10).map(async (match: Match) => {
       try {
         const data = await apiClient.getCached('predictions', { fixture: match.fixture.id }, { ttl: 3600 });
         return { fixtureId: match.fixture.id, prediction: data.response?.[0] || null };
@@ -39,8 +70,8 @@ async function getAllPredictions(matches: any[]) {
     });
     
     const results = await Promise.all(fetchPromises);
-    const predictionsMap: Record<number, any> = {};
-    results.forEach(result => {
+    const predictionsMap: Record<number, unknown> = {};
+    results.forEach((result: PredictionResult) => {
       predictionsMap[result.fixtureId] = result.prediction;
     });
     return predictionsMap;
@@ -118,7 +149,7 @@ export default async function LivescorePage({ searchParams }: PageProps) {
     }
   }
   
-  const groups: Record<number, any> = {};
+  const groups: Record<number, GroupedMatch> = {};
   filteredMatches.forEach((match) => {
     const leagueId = match.league.id;
     if (!groups[leagueId]) {
@@ -134,6 +165,25 @@ export default async function LivescorePage({ searchParams }: PageProps) {
   });
   
   const groupedMatches = Object.values(groups);
+  
+  groupedMatches.sort((a, b) => {
+    const aIndex = priorityLeagueIds.indexOf(a.leagueId);
+    const bIndex = priorityLeagueIds.indexOf(b.leagueId);
+    
+    if (aIndex !== -1 && bIndex !== -1) {
+      return aIndex - bIndex;
+    }
+    
+    if (aIndex !== -1) {
+      return -1;
+    }
+    
+    if (bIndex !== -1) {
+      return 1;
+    }
+    
+    return a.leagueName.localeCompare(b.leagueName);
+  });
   
   return (
     <LivescoreClient 

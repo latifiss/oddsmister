@@ -6,11 +6,27 @@ const redis = Redis.fromEnv();
 
 export const dynamic = 'force-dynamic';
 
-async function shouldRun() {
+interface Match {
+  fixture: {
+    id: number;
+    status: { short: string };
+  };
+  league: {
+    id: number;
+  };
+}
+
+interface PopularMatch {
+  fixture: {
+    id: number;
+  };
+}
+
+async function shouldRun(): Promise<boolean> {
   const lastRun = await redis.get('last_prefetch_run');
   const oneHourAgo = Date.now() - 60 * 60 * 1000;
   
-  if (lastRun && parseInt(lastRun as string) > oneHourAgo) {
+  if (lastRun && parseInt(lastRun as string, 10) > oneHourAgo) {
     return false;
   }
   
@@ -18,16 +34,19 @@ async function shouldRun() {
   return true;
 }
 
-async function getPopularMatches() {
+async function getPopularMatches(): Promise<PopularMatch[]> {
   try {
     const popularLeagueIds = [39, 140, 78, 135, 61, 2, 3];
     const today = new Date().toISOString().split('T')[0];
     const data = await apiClient.getCached('fixtures', { date: today }, { ttl: 300 });
-    const matches = data.response || [];
+    const matches: Match[] = data.response || [];
     
-    return matches.filter((match: any) => 
-      popularLeagueIds.includes(match.league.id) && match.fixture.status.short === 'NS'
-    ).slice(0, 15);
+    return matches
+      .filter((match: Match) => 
+        popularLeagueIds.includes(match.league.id) && match.fixture.status.short === 'NS'
+      )
+      .slice(0, 15)
+      .map((match: Match) => ({ fixture: { id: match.fixture.id } }));
   } catch (error) {
     console.error('Failed to fetch popular matches:', error);
     return [];
@@ -52,7 +71,7 @@ export async function GET(request: Request) {
     const matches = await getPopularMatches();
     
     const results = await Promise.allSettled(
-      matches.map(async (match: any) => {
+      matches.map(async (match: PopularMatch) => {
         await apiClient.getCached('predictions', { fixture: match.fixture.id }, { ttl: 3600 });
         await apiClient.getCached('odds', { fixture: match.fixture.id }, { ttl: 300 });
         return match.fixture.id;
@@ -69,6 +88,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Pre-fetch failed:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

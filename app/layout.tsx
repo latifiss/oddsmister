@@ -19,7 +19,7 @@ export default function RootLayout({
       <body>
         <StyledComponentsRegistry>
           <Providers>
-            <ProgressBar />
+            {/* <ProgressBar /> */}
             <ThemeInitializer />
             <GlobalStyles />
             <ScrollToTop />

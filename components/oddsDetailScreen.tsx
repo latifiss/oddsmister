@@ -99,17 +99,23 @@ const ModalContent = styled.div<{ $isOpen: boolean }>`
   display: flex;
   flex-direction: column;
   position: relative;
-  transform: ${({ $isOpen }) => $isOpen ? 'scale(1)' : 'scale(0.9)'};
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: ${({ $isOpen }) => $isOpen ? 1 : 0};
   overflow: hidden;
   
+  /* Desktop styles */
+  @media only screen and (min-width: 769px) {
+    transform: ${({ $isOpen }) => $isOpen ? 'scale(1)' : 'scale(0.9)'};
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    opacity: ${({ $isOpen }) => $isOpen ? 1 : 0};
+  }
+  
+  /* Mobile styles - bottom sheet */
   @media only screen and (max-width: 768px) {
     border-radius: 20px 20px 0 0;
     max-height: 80vh;
-    transform: translateY($({ $isOpen }) => $isOpen ? '0%' : '100%'});
-    opacity: 1;
     max-width: 100%;
+    transform: translateY(${({ $isOpen }) => $isOpen ? '0%' : '100%'});
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 1;
   }
 `;
 

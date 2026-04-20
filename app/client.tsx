@@ -4,11 +4,54 @@ import Feed from '@/components/feed';
 import PredictionFeed from '@/components/predictionFeed';
 import Tab from '@/components/tab';
 import DaySelector from '@/components/daySelector';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import styled, { ThemeContext } from 'styled-components';
 import Image from 'next/image';
 import { useContext } from 'react';
+
+interface Match {
+  fixture: {
+    id: number;
+    date: string;
+    status: { short: string; elapsed: number };
+    venue: { name: string; city: string };
+    referee: string | null;
+  };
+  teams: {
+    home: { name: string; logo: string; redCard?: number };
+    away: { name: string; logo: string; redCard?: number };
+  };
+  goals: { home: number | null; away: number | null };
+  league: { id: number; name: string; logo: string; country: string; season: number; round: string };
+}
+
+interface GroupedMatch {
+  leagueId: number;
+  leagueName: string;
+  leagueLogo: string;
+  country: string;
+  matches: Match[];
+}
+
+interface LivescoreClientProps {
+  initialMatches: Match[];
+  initialGroupedMatches: GroupedMatch[];
+  initialPredictionsMap: Record<number, unknown>;
+  initialSelectedDate: string;
+  initialSelectedCompetition: string | null;
+}
+
+const STATIC_LEAGUES = [
+  { id: 39, name: 'Premier League', imageName: 'premier-league' },
+  { id: 140, name: 'La Liga', imageName: 'laliga' },
+  { id: 78, name: 'Bundesliga', imageName: 'bundesliga' },
+  { id: 135, name: 'Serie A', imageName: 'serie-a' },
+  { id: 61, name: 'Ligue 1', imageName: 'ligue-1' },
+  { id: 2, name: 'UEFA Champions League', imageName: 'uefa-champions-league' },
+  { id: 3, name: 'UEFA Europa League', imageName: 'uefa-europa-league' },
+  { id: 848, name: 'UEFA Europa Conference League', imageName: 'uefa-europa-conference-league' },
+];
 
 const Wrapper = styled.div`
     display: flex;
@@ -267,19 +310,6 @@ const FeedContainer = styled.div`
     min-width: 0;
 `
 
-const tabs = [
-    { label: 'Premier League', href: '/premier-league', imageName: 'premier-league' },
-    { label: 'La Liga', href: '/laliga', imageName: 'laliga' },
-    { label: 'Bundesliga', href: '/bundesliga', imageName: 'bundesliga' },
-    { label: 'Serie A', href: '/serie-a', imageName: 'serie-a' },
-    { label: 'Ligue 1', href: '/ligue-1', imageName: 'ligue-1' },
-    { label: 'MLS', href: '/mls', imageName: 'mls' },
-    { label: 'Uefa Champions League', href: '/uefa-champions-league', imageName: 'uefa-champions-league' },
-    { label: 'World Cup', href: '/world-cup', imageName: 'worldcup' },
-    { label: 'Europa League', href: '/uefa-europa-league', imageName: 'uefa-europa-league' },
-    { label: 'Conference League', href: '/uefa-europa-conference-league', imageName: 'uefa-europa-conference-league' },
-];
-
 const DesktopTab = ({ label, isActive, href, imageName }: { 
     label: string; 
     isActive: boolean; 
@@ -287,17 +317,10 @@ const DesktopTab = ({ label, isActive, href, imageName }: {
     imageName: string;
 }) => {
     const themeContext = useContext(ThemeContext);
-    const [themeMode, setThemeMode] = useState('light');
-    
-    useEffect(() => {
-        const storedTheme = localStorage.getItem('theme') || 'light';
-        setThemeMode(storedTheme);
-        
-        if (themeContext && themeContext.mode) {
-            setThemeMode(themeContext.mode);
-        }
-    }, [themeContext]);
-    
+    const themeMode = themeContext && typeof themeContext === 'object' && 'mode' in themeContext
+        ? (themeContext as { mode: string }).mode
+        : (typeof window !== 'undefined' ? localStorage.getItem('theme') || 'light' : 'light');
+
     const imagePath = themeMode === 'dark' 
         ? `/assets/comp/dark/${imageName}.png`
         : `/assets/comp/light/${imageName}.png`;
@@ -323,13 +346,33 @@ const DesktopTab = ({ label, isActive, href, imageName }: {
     );
 };
 
-interface LivescoreClientProps {
-  initialMatches: any[];
-  initialGroupedMatches: any[];
-  initialPredictionsMap: Record<number, any>;
-  initialSelectedDate: string;
-  initialSelectedCompetition: string | null;
-}
+const MobileTab = ({ label, isActive, href, imageName, onClick }: { 
+    label: string; 
+    isActive: boolean; 
+    href: string; 
+    imageName: string;
+    onClick: () => void;
+}) => {
+    const themeContext = useContext(ThemeContext);
+    const themeMode = themeContext && typeof themeContext === 'object' && 'mode' in themeContext
+        ? (themeContext as { mode: string }).mode
+        : (typeof window !== 'undefined' ? localStorage.getItem('theme') || 'light' : 'light');
+
+    const imagePath = themeMode === 'dark' 
+        ? `/assets/comp/dark/${imageName}.png`
+        : `/assets/comp/light/${imageName}.png`;
+
+    return (
+        <div onClick={onClick} style={{ cursor: 'pointer' }}>
+            <Tab
+                label={label}
+                isActive={isActive}
+                href={href}
+                TabImage={imagePath}
+            />
+        </div>
+    );
+};
 
 const LivescoreClient = ({ 
   initialMatches,
@@ -345,6 +388,31 @@ const LivescoreClient = ({
   const [themeKey, setThemeKey] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date(initialSelectedDate));
   const [selectedCompetition, setSelectedCompetition] = useState<string | null>(initialSelectedCompetition);
+
+  const sortedTabs = useMemo(() => {
+    return STATIC_LEAGUES.map(league => ({
+      id: league.id,
+      label: league.name,
+      href: '#',
+      imageName: league.imageName,
+    }));
+  }, []);
+
+  const selectedLeagueId = useMemo(() => {
+    if (!selectedCompetition) return null;
+    const league = STATIC_LEAGUES.find(l => l.name === selectedCompetition);
+    return league?.id || null;
+  }, [selectedCompetition]);
+
+  const filteredMatches = useMemo(() => {
+    if (!selectedLeagueId) return initialMatches;
+    return initialMatches.filter(match => match.league.id === selectedLeagueId);
+  }, [initialMatches, selectedLeagueId]);
+
+  const filteredGroupedMatches = useMemo(() => {
+    if (!selectedLeagueId) return initialGroupedMatches;
+    return initialGroupedMatches.filter(group => group.leagueId === selectedLeagueId);
+  }, [initialGroupedMatches, selectedLeagueId]);
 
   useEffect(() => {
     const handleThemeChange = () => {
@@ -381,13 +449,9 @@ const LivescoreClient = ({
 
   const handleCompetitionSelect = (competition: string) => {
     setSelectedCompetition(competition);
-    const params = new URLSearchParams();
-    params.set('competition', competition);
-    if (selectedDate) {
-      params.set('date', selectedDate.toISOString().split('T')[0]);
-    }
-    router.push(`${pathname}?${params.toString()}`);
   };
+
+  const predictionsArray = Object.values(initialPredictionsMap).filter(p => p !== null);
 
   return (
     <Wrapper key={themeKey}>
@@ -396,8 +460,8 @@ const LivescoreClient = ({
           <DesktopGrid>
             <Sidebar>
               <VerticalTabList>
-                {tabs.map((tab) => (
-                  <div key={tab.label} onClick={() => handleCompetitionSelect(tab.label)}>
+                {sortedTabs.map((tab) => (
+                  <div key={tab.id} onClick={() => handleCompetitionSelect(tab.label)}>
                     <DesktopTab
                       label={tab.label}
                       isActive={selectedCompetition === tab.label}
@@ -413,9 +477,9 @@ const LivescoreClient = ({
               <DaySelector onDayChange={handleDayChange} selectedDate={selectedDate} />
               <Feed 
                 selectedDate={selectedDate} 
-                selectedCompetition={selectedCompetition}
-                initialMatches={initialMatches}
-                initialGroupedMatches={initialGroupedMatches}
+                selectedCompetition={selectedLeagueId ? selectedLeagueId.toString() : null}
+                initialMatches={filteredMatches}
+                initialGroupedMatches={filteredGroupedMatches}
               />
             </FeedColumn>
 
@@ -423,8 +487,11 @@ const LivescoreClient = ({
               <PredictionsContainer>
                 <Title>Predictions</Title>
                 <PredictionFeed 
-                  initialPredictions={Object.values(initialPredictionsMap)}
+                  initialPredictions={predictionsArray}
                   limit={5}
+                  matches={initialMatches}
+                  isLoading={false}
+                  isError={false}
                 />
               </PredictionsContainer>
             </RightColumn>
@@ -438,23 +505,23 @@ const LivescoreClient = ({
             {activeTab === 'matches' && (
               <FeedContainer>
                 <MobileTabRow>
-                  {tabs.map((tab) => (
-                    <div key={tab.label} onClick={() => handleCompetitionSelect(tab.label)}>
-                      <Tab
-                        label={tab.label}
-                        isActive={selectedCompetition === tab.label}
-                        href="#"
-                        TabImage={`/assets/competitions/${tab.imageName}.png`}
-                      />
-                    </div>
+                  {sortedTabs.map((tab) => (
+                    <MobileTab
+                      key={tab.id}
+                      label={tab.label}
+                      isActive={selectedCompetition === tab.label}
+                      href="#"
+                      imageName={tab.imageName}
+                      onClick={() => handleCompetitionSelect(tab.label)}
+                    />
                   ))}
                 </MobileTabRow>
                 <DaySelector onDayChange={handleDayChange} selectedDate={selectedDate} />
                 <Feed 
                   selectedDate={selectedDate} 
-                  selectedCompetition={selectedCompetition}
-                  initialMatches={initialMatches}
-                  initialGroupedMatches={initialGroupedMatches}
+                  selectedCompetition={selectedLeagueId ? selectedLeagueId.toString() : null}
+                  initialMatches={filteredMatches}
+                  initialGroupedMatches={filteredGroupedMatches}
                 />
               </FeedContainer>
             )}
@@ -462,8 +529,11 @@ const LivescoreClient = ({
               <PredictionsContainer>
                 <Title>Predictions</Title>
                 <PredictionFeed 
-                  initialPredictions={Object.values(initialPredictionsMap)}
+                  initialPredictions={predictionsArray}
                   limit={5}
+                  matches={initialMatches}
+                  isLoading={false}
+                  isError={false}
                 />
               </PredictionsContainer>
             )}
