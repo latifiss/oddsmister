@@ -1,16 +1,29 @@
+# .github/workflows/update-predictions.yml
 name: Update Predictions Daily
 
 on:
   schedule:
-    - cron: '0 3 * * *' # Run at 3 AM UTC daily
-  workflow_dispatch: # Allow manual trigger
+    - cron: '0 3 * * *'  # Run at 3 AM UTC daily
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
   update-predictions:
     runs-on: ubuntu-latest
+    
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
       - name: Call update predictions endpoint
         run: |
           curl -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            ${{ secrets.NEXT_PUBLIC_BASE_URL }}/api/cron/update-predictions
+            "${{ secrets.NEXT_PUBLIC_BASE_URL }}/api/cron/update-predictions"
+      
+      - name: Log success
+        if: success()
+        run: echo "✅ Predictions updated successfully at $(date)"
+      
+      - name: Log failure
+        if: failure()
+        run: echo "❌ Failed to update predictions at $(date)"
