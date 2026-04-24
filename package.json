@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "cypress:run:headed": "cypress run --headed",
+    "test:e2e": "start-server-and-test dev http://localhost:3000 cypress:run",
+    "test:e2e:ui": "start-server-and-test dev http://localhost:3000 cypress:open"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -31,8 +36,11 @@
     "swr": "^2.4.1"
   },
   "devDependencies": {
+    "@cypress/code-coverage": "^4.0.3",
+    "@testing-library/cypress": "^10.1.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
+    "@types/cypress__code-coverage": "^3.10.2",
     "@types/d3": "^7.4.3",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
@@ -42,9 +50,13 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.18.1",
+    "babel-plugin-istanbul": "^8.0.0",
     "bcryptjs": "^3.0.3",
+    "cypress": "^15.14.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "nyc": "^18.0.0",
+    "start-server-and-test": "^3.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }

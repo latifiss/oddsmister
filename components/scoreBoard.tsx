@@ -333,7 +333,7 @@ const ScoreBoard = ({
     if (!leftTag && !rightTag) return null;
     
     return (
-      <Head>
+      <Head data-cy="scoreboard-header">
         <LeftTags>
           {leftTag && (
             <MarkerRow $scale={0.8}>
@@ -353,16 +353,16 @@ const ScoreBoard = ({
   };
 
   const renderOddsRow = () => (
-    <InnerAlt>
-      <Odd>
+    <InnerAlt data-cy="odds-row">
+      <Odd data-cy="odd-home">
         <OddSign>1</OddSign>
         <span>{homeOdds!.toFixed(2)}</span>
       </Odd>
-      <Odd>
+      <Odd data-cy="odd-draw">
         <OddSign>X</OddSign>
         <span>{drawOdds!.toFixed(2)}</span>
       </Odd>
-      <Odd>
+      <Odd data-cy="odd-away">
         <OddSign>2</OddSign>
         <span>{awayOdds!.toFixed(2)}</span>
       </Odd>
@@ -384,23 +384,23 @@ const ScoreBoard = ({
 
   if (status === 'live') {
     return (
-      <Component href={`/match/${fixtureId}`}>
+      <Component href={`/match/${fixtureId}`} data-cy="scoreboard-live">
         {renderHeader()}
         <Content>
           <Bottom $hasOdds={hasOdds}>
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
-                <TeamText title={homeTeam}>{homeTeam}</TeamText>
+                <TeamText title={homeTeam} data-cy="home-team">{homeTeam}</TeamText>
               </TeamBlock>
-              <Score $status="live">{homeScore || '0'}</Score>
+              <Score $status="live" data-cy="home-score">{homeScore || '0'}</Score>
               <Mid>
                 <ScoreTimerVertical minute={minute || 55} />
               </Mid>
-              <Score $status="live">{awayScore || '0'}</Score>
+              <Score $status="live" data-cy="away-score">{awayScore || '0'}</Score>
               <TeamBlock>
                 <Badge src={awayImage} width={42} height={42} alt='badge' />
-                <TeamText title={awayTeam}>{awayTeam}</TeamText>
+                <TeamText title={awayTeam} data-cy="away-team">{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
             {hasOdds && renderOddsRow()}
@@ -412,26 +412,26 @@ const ScoreBoard = ({
 
   if (status === 'not_started') {
     return (
-      <Component href={`/match/${fixtureId}`}>
+      <Component href={`/match/${fixtureId}`} data-cy="scoreboard-scheduled">
         {renderHeader()}
         <Content>
           <Bottom $hasOdds={hasOdds}>
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
-                <TeamText title={homeTeam}>{homeTeam}</TeamText>
+                <TeamText title={homeTeam} data-cy="home-team">{homeTeam}</TeamText>
               </TeamBlock>
               <Score $status="not_started"></Score>
               <Mid>
                 <StatusText>
-                  <StatusLine>{date}</StatusLine>
-                  <StatusLine>{time}</StatusLine>
+                  <StatusLine data-cy="match-date">{date}</StatusLine>
+                  <StatusLine data-cy="match-time">{time}</StatusLine>
                 </StatusText>
               </Mid>
               <Score $status="not_started"></Score>
               <TeamBlock>
                 <Badge src={awayImage} width={42} height={42} alt='badge' />
-                <TeamText title={awayTeam}>{awayTeam}</TeamText>
+                <TeamText title={awayTeam} data-cy="away-team">{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
             {hasOdds && renderOddsRow()}
@@ -443,23 +443,23 @@ const ScoreBoard = ({
 
   if (status === 'halftime') {
     return (
-      <Component href={`/match/${fixtureId}`}>
+      <Component href={`/match/${fixtureId}`} data-cy="scoreboard-halftime">
         {renderHeader()}
         <Content>
           <Bottom $hasOdds={hasOdds}>
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
-                <TeamText title={homeTeam}>{homeTeam}</TeamText>
+                <TeamText title={homeTeam} data-cy="home-team">{homeTeam}</TeamText>
               </TeamBlock>
-              <Score $status="halftime">{homeScore || '0'}</Score>
+              <Score $status="halftime" data-cy="home-score">{homeScore || '0'}</Score>
               <Mid>
                 <ScoreTimerVertical minute={45} isHalftime={true} />
               </Mid>
-              <Score $status="halftime">{awayScore || '0'}</Score>
+              <Score $status="halftime" data-cy="away-score">{awayScore || '0'}</Score>
               <TeamBlock>
                 <Badge src={awayImage} width={42} height={42} alt='badge' />
-                <TeamText title={awayTeam}>{awayTeam}</TeamText>
+                <TeamText title={awayTeam} data-cy="away-team">{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
             {hasOdds && renderOddsRow()}
@@ -471,23 +471,23 @@ const ScoreBoard = ({
 
   if (status === 'ended') {
     return (
-      <Component href={`/match/${fixtureId}`}>
+      <Component href={`/match/${fixtureId}`} data-cy="scoreboard-finished">
         {renderHeader()}
         <Content>
           <Bottom $hasOdds={hasOdds}>
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
-                <TeamText title={homeTeam}>{homeTeam}</TeamText>
+                <TeamText title={homeTeam} data-cy="home-team">{homeTeam}</TeamText>
               </TeamBlock>
-              <Score $status="ended">{homeScore || '0'}</Score>
+              <Score $status="ended" data-cy="home-score">{homeScore || '0'}</Score>
               <Mid>
                 <ScoreTimerVertical minute={90} isFulltime={true} />
               </Mid>
-              <Score $status="ended">{awayScore || '0'}</Score>
+              <Score $status="ended" data-cy="away-score">{awayScore || '0'}</Score>
               <TeamBlock>
                 <Badge src={awayImage} width={42} height={42} alt='badge' />
-                <TeamText title={awayTeam}>{awayTeam}</TeamText>
+                <TeamText title={awayTeam} data-cy="away-team">{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
           </Bottom>
@@ -498,14 +498,14 @@ const ScoreBoard = ({
 
   if (status === 'cancelled') {
     return (
-      <Component href={`/match/${fixtureId}`}>
+      <Component href={`/match/${fixtureId}`} data-cy="scoreboard-cancelled">
         {renderHeader()}
         <Content>
           <Bottom $hasOdds={hasOdds}>
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
-                <TeamText title={homeTeam}>{homeTeam}</TeamText>
+                <TeamText title={homeTeam} data-cy="home-team">{homeTeam}</TeamText>
               </TeamBlock>
               <Score $status="cancelled"></Score>
               <Mid>
@@ -514,7 +514,7 @@ const ScoreBoard = ({
               <Score $status="cancelled"></Score>
               <TeamBlock>
                 <Badge src={awayImage} width={42} height={42} alt='badge' />
-                <TeamText title={awayTeam}>{awayTeam}</TeamText>
+                <TeamText title={awayTeam} data-cy="away-team">{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
           </Bottom>
@@ -525,14 +525,14 @@ const ScoreBoard = ({
 
   if (status === 'postponed') {
     return (
-      <Component href={`/match/${fixtureId}`}>
+      <Component href={`/match/${fixtureId}`} data-cy="scoreboard-postponed">
         {renderHeader()}
         <Content>
           <Bottom $hasOdds={hasOdds}>
             <Block>
               <TeamBlock>
                 <Badge src={homeImage} width={42} height={42} alt='badge' />
-                <TeamText title={homeTeam}>{homeTeam}</TeamText>
+                <TeamText title={homeTeam} data-cy="home-team">{homeTeam}</TeamText>
               </TeamBlock>
               <Score $status="postponed"></Score>
               <Mid>
@@ -541,7 +541,7 @@ const ScoreBoard = ({
               <Score $status="postponed"></Score>
               <TeamBlock>
                 <Badge src={awayImage} width={42} height={42} alt='badge' />
-                <TeamText title={awayTeam}>{awayTeam}</TeamText>
+                <TeamText title={awayTeam} data-cy="away-team">{awayTeam}</TeamText>
               </TeamBlock>
             </Block>
           </Bottom>

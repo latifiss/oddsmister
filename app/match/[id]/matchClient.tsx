@@ -309,7 +309,7 @@ const StructuredData = ({ match }: StructuredDataProps) => {
 const Breadcrumb = ({ match, league }: BreadcrumbProps) => {
     const isActive = true;
     return (
-        <BreadcrumbContainer>
+        <BreadcrumbContainer data-cy="breadcrumb">
             <BreadLink href="/" passHref>
                 <Crumb as="span" $clickable>Home</Crumb>
             </BreadLink>
@@ -344,32 +344,31 @@ export default function MatchDetailClient({
   const goals = match.goals;
   const league = match.league;
   
-  // Pass the raw status short code directly - NO conversion!
   const rawStatus = fixture.status.short;
   
   return (
     <>
       <StructuredData match={match} />
-      <Wrapper>
+      <Wrapper data-cy="match-detail-wrapper">
         <Breadcrumb match={match} league={league} />
         
-        <HeadBlock>
-          <LabelTitle>{teams.home.name} vs {teams.away.name}</LabelTitle>
-          <LabelDate>{new Date(fixture.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}, {new Date(fixture.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</LabelDate>
-          <LabelComp>{league.name} {league.season || ''}, {league.round || ''}</LabelComp>
+        <HeadBlock data-cy="match-header-info">
+          <LabelTitle data-cy="match-title">{teams.home.name} vs {teams.away.name}</LabelTitle>
+          <LabelDate data-cy="match-date-label">{new Date(fixture.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}, {new Date(fixture.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</LabelDate>
+          <LabelComp data-cy="match-league-label">{league.name} {league.season || ''}, {league.round || ''}</LabelComp>
           <LabelCompBlock>
             <LabelCompIcon src='/icons/venue.svg' alt='icon' width={20} height={20} />
-            <LabelComp>{fixture.venue?.name || 'TBD'}, {fixture.venue?.city || ''}</LabelComp>
+            <LabelComp data-cy="match-venue-label">{fixture.venue?.name || 'TBD'}, {fixture.venue?.city || ''}</LabelComp>
           </LabelCompBlock>
           <LabelCompBlock>
             <LabelCompIcon src='/icons/referee.svg' alt='icon' width={20} height={20} />
-            <LabelComp>{fixture.referee || 'TBD'}</LabelComp>
+            <LabelComp data-cy="match-referee-label">{fixture.referee || 'TBD'}</LabelComp>
           </LabelCompBlock>
         </HeadBlock>
 
         <MainGrid>
           <LeftColumn>
-            <ScoreContent>
+            <ScoreContent data-cy="scoreboard-section">
               <ScoreBoard
                 fixtureId={fixture.id}
                 homeTeam={teams.home.name}
@@ -390,18 +389,20 @@ export default function MatchDetailClient({
             </ScoreContent>
             
             <DesktopView>
-              <TwoColumnGrid>
+              <TwoColumnGrid data-cy="odds-section-desktop">
                 <OddsDetailScreen fixtureId={fixture.id} initialOddsData={initialOdds} />
               </TwoColumnGrid>
             </DesktopView>
 
             <MobileView>
-              <OddsDetailScreen fixtureId={fixture.id} initialOddsData={initialOdds} />
+              <div data-cy="odds-section-mobile">
+                <OddsDetailScreen fixtureId={fixture.id} initialOddsData={initialOdds} />
+              </div>
             </MobileView>
           </LeftColumn>
 
           <RightColumn>
-            <PredictionsContainer>
+            <PredictionsContainer data-cy="predictions-sidebar">
               <Title>Predictions Picks</Title>
               <PredictionFeed 
                 initialPredictions={initialPredictions ? [initialPredictions] : []} 

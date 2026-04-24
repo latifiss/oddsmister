@@ -4,7 +4,7 @@ import LiveScoreBoard from '@/components/livescore';
 export default function TestLivePage() {
   // Use a real fixture ID from your API
   // Example: Premier League match (you can change this)
-  const TEST_FIXTURE_ID = 1422461; // Replace with an actual fixture ID from your data
+  const TEST_FIXTURE_ID = 1517272; // Replace with an actual fixture ID from your data
   
   return (
     <div style={{ 

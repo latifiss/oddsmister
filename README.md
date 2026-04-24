@@ -1,5 +1,3 @@
-#
-
 <p align="center">
   <img src="./public/assets/logo/oi-logo.svg" alt="Logo" width="150" height="150" />
 </p>

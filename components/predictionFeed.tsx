@@ -45,7 +45,6 @@ const getTeamColor = (teamName: string): string => {
   if (teamColorCache.has(teamName)) {
     return teamColorCache.get(teamName)!;
   }
-  
   const color = generateRandomColor();
   teamColorCache.set(teamName, color);
   return color;
@@ -63,7 +62,6 @@ const getStoredSelectedFixtures = (): { fixtureIds: number[]; chartDistribution:
   try {
     const storedDate = localStorage.getItem(SELECTED_FIXTURES_DATE_KEY);
     const today = getTodayDateString();
-    
     if (storedDate === today) {
       const storedFixtures = localStorage.getItem(SELECTED_FIXTURES_KEY);
       const storedCharts = localStorage.getItem(CHART_DISTRIBUTION_KEY);
@@ -108,8 +106,7 @@ const PredictionFeed = ({
   const [predictionsData, setPredictionsData] = useState<Map<number, any>>(new Map());
   const [loadingPredictions, setLoadingPredictions] = useState(initialPredictions.length === 0);
   const [fetched, setFetched] = useState(initialPredictions.length > 0);
-  const [storedChartDistribution, setStoredChartDistribution] = useState<string[] | null>(null);
-
+  
   const { selectedMatches, chartDistribution } = useMemo(() => {
     if (!externalMatches || !externalMatches.length) {
       return { selectedMatches: [], chartDistribution: [] };
@@ -119,24 +116,17 @@ const PredictionFeed = ({
       match => getMatchStatus(match.fixture.status.short) === 'not_started'
     );
     
-    // Check if we have stored fixtures for today
     const stored = getStoredSelectedFixtures();
-    
     if (stored && stored.fixtureIds.length > 0) {
-      // Use stored fixtures
       const selected = stored.fixtureIds
         .map(id => notStartedMatches.find(match => match.fixture.id === id))
         .filter(match => match !== undefined);
       
       if (selected.length === limit) {
-        return { 
-          selectedMatches: selected, 
-          chartDistribution: stored.chartDistribution 
-        };
+        return { selectedMatches: selected, chartDistribution: stored.chartDistribution };
       }
     }
     
-    // If no stored fixtures or not enough matches, select new ones
     const shuffled = [...notStartedMatches];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -145,19 +135,13 @@ const PredictionFeed = ({
     
     const selected = shuffled.slice(0, limit);
     const newChartDistribution = distributeCharts(selected.length);
-    
-    // Store the selected fixture IDs and chart distribution for today
     if (selected.length > 0) {
       storeSelectedFixtures(selected.map(match => match.fixture.id), newChartDistribution);
     }
     
-    return { 
-      selectedMatches: selected, 
-      chartDistribution: newChartDistribution 
-    };
+    return { selectedMatches: selected, chartDistribution: newChartDistribution };
   }, [externalMatches, limit]);
 
-  // Use initial predictions from server if available
   useEffect(() => {
     if (initialPredictions.length > 0 && !fetched) {
       const predictions = new Map();
@@ -172,15 +156,11 @@ const PredictionFeed = ({
     }
   }, [initialPredictions, fetched]);
 
-  // Fetch predictions via API (Upstash will cache them automatically)
   useEffect(() => {
-    if (fetched) return;
-    if (!selectedMatches.length) return;
-    
+    if (fetched || !selectedMatches.length) return;
     const fetchPredictions = async () => {
       setLoadingPredictions(true);
       const predictions = new Map();
-      
       const fetchPromises = selectedMatches.map(async (match) => {
         try {
           const response = await fetch(`/api/predictions?fixtureId=${match.fixture.id}`);
@@ -192,35 +172,21 @@ const PredictionFeed = ({
           console.error(`Failed to fetch prediction for ${match.fixture.id}:`, error);
         }
       });
-      
       await Promise.all(fetchPromises);
-      
       setPredictionsData(predictions);
       setLoadingPredictions(false);
       setFetched(true);
     };
-    
     fetchPredictions();
   }, [selectedMatches, fetched]);
 
-  if (externalLoading) {
-    return <LoadingSpinner>Loading matches...</LoadingSpinner>;
-  }
-  
-  if (externalError) {
-    return <LoadingSpinner>Error loading matches</LoadingSpinner>;
-  }
-  
-  if (loadingPredictions && !fetched) {
-    return <LoadingSpinner>Loading predictions...</LoadingSpinner>;
-  }
-  
-  if (!selectedMatches.length) {
-    return <NoMatchesMessage>No upcoming matches available for predictions today</NoMatchesMessage>;
-  }
+  if (externalLoading) return <LoadingSpinner data-cy="predictions-external-loading">Loading matches...</LoadingSpinner>;
+  if (externalError) return <LoadingSpinner data-cy="predictions-error">Error loading matches</LoadingSpinner>;
+  if (loadingPredictions && !fetched) return <LoadingSpinner data-cy="predictions-fetching">Loading predictions...</LoadingSpinner>;
+  if (!selectedMatches.length) return <NoMatchesMessage data-cy="no-predictions-available">No upcoming matches available for predictions today</NoMatchesMessage>;
 
   return (
-    <ScoreWrapper>
+    <ScoreWrapper data-cy="prediction-feed-container">
       {selectedMatches.map((match, index) => {
         const prediction = predictionsData.get(match.fixture.id);
         const homeColor = getTeamColor(match.teams.home.name);

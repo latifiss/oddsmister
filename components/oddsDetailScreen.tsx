@@ -101,14 +101,12 @@ const ModalContent = styled.div<{ $isOpen: boolean }>`
   position: relative;
   overflow: hidden;
   
-  /* Desktop styles */
   @media only screen and (min-width: 769px) {
     transform: ${({ $isOpen }) => $isOpen ? 'scale(1)' : 'scale(0.9)'};
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
     opacity: ${({ $isOpen }) => $isOpen ? 1 : 0};
   }
   
-  /* Mobile styles - bottom sheet */
   @media only screen and (max-width: 768px) {
     border-radius: 20px 20px 0 0;
     max-height: 80vh;
@@ -139,10 +137,6 @@ const ScrollableContent = styled.div`
     border-radius: 4px;
   }
   
-  &::-webkit-scrollbar-thumb:hover {
-    background: ${({ theme }) => theme.colors.grayText};
-  }
-  
   scrollbar-width: thin;
   scrollbar-color: ${({ theme }) => theme.colors.border} ${({ theme }) => theme.colors.fade};
   
@@ -151,7 +145,6 @@ const ScrollableContent = styled.div`
       display: none;
     }
     scrollbar-width: none;
-    -ms-overflow-style: none;
   }
 `;
 
@@ -181,11 +174,6 @@ const CloseButton = styled.button`
   align-items: center;
   justify-content: center;
   padding: 4px;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    color: ${({ theme }) => theme.colors.text};
-  }
 `;
 
 const DragHandle = styled.div`
@@ -211,7 +199,6 @@ const OddsHeader = styled.div`
   position: sticky;
   top: 0;
   z-index: 1;
-  flex-shrink: 0;
 `;
 
 const OddsHeaderLabels = styled.div`
@@ -265,18 +252,13 @@ const OddButtonStyled = styled.button<{ $isBest?: boolean }>`
   font-size: 12px;
   font-weight: 700;
   line-height: 16px;
-  color: ${({ theme }) => theme.colors.text};
+  color: ${({ theme, $isBest }) => $isBest ? theme.colors.primary || '#000' : theme.colors.text};
   font-family: inherit;
   text-decoration: none;
   white-space: nowrap;
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s ease;
   padding: 0 8px;
-
-  &:active {
-    transform: translateY(0);
-  }
 `;
 
 interface ApiOdds {
@@ -339,7 +321,6 @@ const OddsDetailScreen = ({ fixtureId, initialOddsData }: OddsDetailScreenProps)
       p.apiName?.some(apiName => apiName.toLowerCase() === providerName.toLowerCase())
     );
     if (!provider) return false;
-    
     const logo = getLogo(provider.id, currentTheme);
     return logo !== '/icons/default-bookmaker.svg' && logo !== '';
   };
@@ -350,53 +331,38 @@ const OddsDetailScreen = ({ fixtureId, initialOddsData }: OddsDetailScreenProps)
       setLoading(false);
       return;
     }
-    
     const fetchOdds = async () => {
       if (!fixtureId) {
         setError('No fixture ID provided');
         setLoading(false);
         return;
       }
-      
       try {
         setLoading(true);
         setError(null);
         const response = await fetch(`/api/odds?fixtureId=${fixtureId}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch odds');
-        }
+        if (!response.ok) throw new Error('Failed to fetch odds');
         const data = await response.json();
         setOddsData(data.response?.[0] || null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load odds data');
-        console.error('Error fetching odds:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load odds');
       } finally {
         setLoading(false);
       }
     };
-
     fetchOdds();
   }, [fixtureId, initialOddsData]);
 
   useEffect(() => {
     if (!oddsData?.bookmakers || oddsData.bookmakers.length === 0) return;
-
-    const filteredBookmakers = oddsData.bookmakers.filter(bookmaker => 
-      hasValidLogo(bookmaker.name)
-    );
-
+    const filteredBookmakers = oddsData.bookmakers.filter(bookmaker => hasValidLogo(bookmaker.name));
     if (filteredBookmakers.length === 0) return;
 
     const allBets = new Map<string, Set<string>>();
-    
     filteredBookmakers.forEach(bookmaker => {
       bookmaker.bets.forEach(bet => {
-        if (!allBets.has(bet.name)) {
-          allBets.set(bet.name, new Set());
-        }
-        bet.values.forEach(value => {
-          allBets.get(bet.name)?.add(value.value);
-        });
+        if (!allBets.has(bet.name)) allBets.set(bet.name, new Set());
+        bet.values.forEach(value => allBets.get(bet.name)?.add(value.value));
       });
     });
 
@@ -406,138 +372,61 @@ const OddsDetailScreen = ({ fixtureId, initialOddsData }: OddsDetailScreenProps)
       'Both Teams Score': { displayName: 'Both Teams to Score', getLabels: (values) => values },
       'Goals Over/Under': { displayName: 'Over/Under Goals', getLabels: (values) => values },
       'First Half Winner': { displayName: 'First Half Winner', getLabels: (values) => values.map(v => v === 'Home' ? '1' : v === 'Draw' ? 'X' : '2') },
-      'Second Half Winner': { displayName: 'Second Half Winner', getLabels: (values) => values.map(v => v === 'Home' ? '1' : v === 'Draw' ? 'X' : '2') },
-      'Asian Handicap': { displayName: 'Asian Handicap', getLabels: (values) => values },
-      'Handicap Result': { displayName: 'Handicap Result', getLabels: (values) => values },
-      'HT/FT Double': { displayName: 'Half Time/Full Time', getLabels: (values) => values },
-      'Exact Score': { displayName: 'Correct Score', getLabels: (values) => values },
-      'Highest Scoring Half': { displayName: 'Highest Scoring Half', getLabels: (values) => values },
-      'Odd/Even': { displayName: 'Odd/Even Total Goals', getLabels: (values) => values },
-      'Team To Score First': { displayName: 'First Goal Scorer', getLabels: (values) => values },
-      'Win To Nil': { displayName: 'Win to Nil', getLabels: (values) => values },
     };
 
     const markets: OddsMarket[] = [];
-
     for (const [betName, valueSet] of allBets.entries()) {
       const config = marketConfig[betName];
       if (!config) continue;
-
       const values = Array.from(valueSet);
       const labels = config.getLabels(values);
-      
-      const bookmakerWithBet = filteredBookmakers.find(bookmaker =>
-        bookmaker.bets.some(bet => bet.name === betName)
-      );
-
+      const bookmakerWithBet = filteredBookmakers.find(bookmaker => bookmaker.bets.some(bet => bet.name === betName));
       if (bookmakerWithBet) {
         const bet = bookmakerWithBet.bets.find(b => b.name === betName);
         if (bet) {
-          const odds = bet.values.map((value, idx) => ({
-            id: `${betName}_${value.value}_${idx}`,
-            value: parseFloat(value.odd),
-            label: labels[idx] || value.value,
-          }));
-          
           markets.push({
             name: betName,
             displayName: config.displayName,
-            odds: odds,
+            odds: bet.values.map((v, i) => ({ id: `${betName}_${v.value}_${i}`, value: parseFloat(v.odd), label: labels[i] || v.value })),
             labels: labels,
           });
         }
       }
     }
-
     setAvailableMarkets(markets);
   }, [oddsData, currentTheme]);
 
   useEffect(() => {
-    if (modalData.isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
+    document.body.style.overflow = modalData.isOpen ? 'hidden' : 'unset';
+    return () => { document.body.style.overflow = 'unset'; };
   }, [modalData.isOpen]);
 
   const handleOddClick = (id: string, value: number) => {
     const newSelected = new Map(selectedOdds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.set(id, true);
-    }
+    if (newSelected.has(id)) newSelected.delete(id); else newSelected.set(id, true);
     setSelectedOdds(newSelected);
   };
 
   const handleCompareClick = (marketName: string, oddsLabels: string[]) => {
     if (!oddsData?.bookmakers) return;
-    
-    const filteredBookmakers = oddsData.bookmakers.filter(bookmaker => 
-      hasValidLogo(bookmaker.name)
-    );
-    
-    const providers = filteredBookmakers.map(bookmaker => {
+    const providers = oddsData.bookmakers.filter(bm => hasValidLogo(bm.name)).map(bookmaker => {
       const bet = bookmaker.bets.find(b => b.name === marketName);
       if (!bet) return null;
-      
-      const normalizedName = bookmaker.name.toLowerCase().replace(/\s+/g, '');
-      
       return {
         name: bookmaker.name,
-        logo: getLogo(normalizedName),
-        odds: bet.values.map((value, idx) => ({
-          id: `${bookmaker.name}_${value.value}_${idx}`,
-          value: parseFloat(value.odd),
-          label: oddsLabels[idx] || value.value
-        }))
+        logo: getLogo(bookmaker.name.toLowerCase().replace(/\s+/g, '')),
+        odds: bet.values.map((v, i) => ({ id: `${bookmaker.name}_${v.value}_${i}`, value: parseFloat(v.odd), label: oddsLabels[i] || v.value }))
       };
-    }).filter(provider => provider !== null) as Array<{
-      name: string;
-      logo: string;
-      odds: Array<{ id: string; value: number; label?: string }>;
-    }>;
+    }).filter(p => p !== null) as any[];
     
-    setModalData({
-      isOpen: true,
-      marketName,
-      providers,
-      oddsLabels: oddsLabels,
-    });
+    setModalData({ isOpen: true, marketName, providers, oddsLabels });
   };
 
-  const closeModal = () => {
-    setModalData({ ...modalData, isOpen: false });
-  };
+  const closeModal = () => setModalData({ ...modalData, isOpen: false });
 
-  if (loading) {
-    return (
-      <LoadingContainer>
-        Loading odds data...
-      </LoadingContainer>
-    );
-  }
-
-  if (error) {
-    return (
-      <ErrorContainer>
-        Error loading odds: {error}
-      </ErrorContainer>
-    );
-  }
-
-  if (!oddsData || !oddsData.bookmakers || oddsData.bookmakers.length === 0) {
-    return (
-      <Container>
-        <div style={{ textAlign: 'center', padding: '20px', color: '#6d747b' }}>
-          No odds available for this match
-        </div>
-      </Container>
-    );
-  }
+  if (loading) return <LoadingContainer data-cy="odds-loading">Loading odds...</LoadingContainer>;
+  if (error) return <ErrorContainer data-cy="odds-error">{error}</ErrorContainer>;
+  if (!oddsData?.bookmakers?.length) return <Container data-cy="odds-empty"><div style={{textAlign: 'center', padding: '20px'}}>No odds available</div></Container>;
 
   const findBestOdds = (oddsValues: number[]) => {
     const max = Math.max(...oddsValues);
@@ -546,69 +435,45 @@ const OddsDetailScreen = ({ fixtureId, initialOddsData }: OddsDetailScreenProps)
 
   return (
     <>
-      <Container>
+      <Container data-cy="odds-container">
         {availableMarkets.map((market, index) => (
-          <div key={index}>
+          <div key={index} data-cy={`market-group-${market.name.toLowerCase().replace(/\s+/g, '-')}`}>
             <SectionHeader>
               <SectionTitle>{market.displayName}</SectionTitle>
-              <CompareButtonHeader onClick={() => handleCompareClick(market.name, market.labels)}>
-                Compare odds
-                <ChevronIcon />
+              <CompareButtonHeader data-cy="compare-button" onClick={() => handleCompareClick(market.name, market.labels)}>
+                Compare odds <ChevronIcon />
               </CompareButtonHeader>
             </SectionHeader>
             <OddsRow
-              odds={market.odds.map(odd => ({
-                ...odd,
-                isSelected: selectedOdds.has(odd.id),
-                trend: 'stable' as const
-              }))}
+              odds={market.odds.map(odd => ({ ...odd, isSelected: selectedOdds.has(odd.id), trend: 'stable' as const }))}
               onOddClick={handleOddClick}
             />
           </div>
         ))}
       </Container>
 
-      <ModalOverlay $isOpen={modalData.isOpen} onClick={closeModal}>
+      <ModalOverlay $isOpen={modalData.isOpen} onClick={closeModal} data-cy="odds-modal">
         <ModalContent $isOpen={modalData.isOpen} onClick={(e) => e.stopPropagation()}>
           <DragHandle />
           <ModalHeader>
-            <ModalTitle>Compare Odds - {modalData.marketName}</ModalTitle>
-            <CloseButton onClick={closeModal}>
-              <IoClose size={24} />
-            </CloseButton>
+            <ModalTitle data-cy="modal-title">Compare - {modalData.marketName}</ModalTitle>
+            <CloseButton data-cy="modal-close" onClick={closeModal}><IoClose size={24} /></CloseButton>
           </ModalHeader>
-          
           <ScrollableContent>
             <OddsHeader>
               <div></div>
               <OddsHeaderLabels>
-                {modalData.oddsLabels?.map((label, idx) => (
-                  <OddsHeaderLabel key={idx}>{label}</OddsHeaderLabel>
-                ))}
+                {modalData.oddsLabels?.map((label, idx) => <OddsHeaderLabel key={idx}>{label}</OddsHeaderLabel>)}
               </OddsHeaderLabels>
             </OddsHeader>
-            
             {modalData.providers.map((provider, idx) => {
-              const oddsValues = provider.odds.map(odd => odd.value);
-              const isBestArray = findBestOdds(oddsValues);
-              
+              const isBestArray = findBestOdds(provider.odds.map((o: any) => o.value));
               return (
-                <ProviderRow key={idx}>
-                  <ProviderLogoModal>
-                    <Image
-                      src={provider.logo}
-                      alt={provider.name}
-                      fill
-                      sizes="60px"
-                      style={{ objectFit: 'contain' }}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </ProviderLogoModal>
+                <ProviderRow key={idx} data-cy={`provider-row-${provider.name.toLowerCase()}`}>
+                  <ProviderLogoModal><Image src={provider.logo} alt={provider.name} fill style={{ objectFit: 'contain' }} /></ProviderLogoModal>
                   <ProviderOdds>
-                    {provider.odds.map((odd, oddIdx) => (
-                      <OddButtonStyled key={oddIdx} $isBest={isBestArray[oddIdx]}>
+                    {provider.odds.map((odd: any, oddIdx: number) => (
+                      <OddButtonStyled key={oddIdx} $isBest={isBestArray[oddIdx]} data-cy="provider-odd-btn">
                         {odd.value.toFixed(2)}
                       </OddButtonStyled>
                     ))}
