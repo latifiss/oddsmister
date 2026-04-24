@@ -4,11 +4,7 @@
   <img src="./public/assets/logo/oi-logo.svg" alt="Logo" width="150" height="150" />
 </p>
 
-<p align="center">
-    <h1 style="font-size: 38px; font-weight: 700;">
-    OddsMister
-  </h1>
-</p>
+<h1 align="center">OddsMister</h1>
 
 OddsMister is a comprehensive football betting analytics platform built with Next.js. It provides multi-view insights, predictions, and data integration for football leagues worldwide, leveraging real-time odds and match statistics.
 
