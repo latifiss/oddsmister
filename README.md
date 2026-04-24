@@ -5,7 +5,9 @@
 </p>
 
 <p align="center">
-  OddsMister
+    <span style="font-size: 38px; font-weight: 700;">
+    OddsMister
+  </span>
 </p>
 
 OddsMister is a comprehensive football betting analytics platform built with Next.js. It provides multi-view insights, predictions, and data integration for football leagues worldwide, leveraging real-time odds and match statistics.
