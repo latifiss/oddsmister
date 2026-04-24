@@ -1,12 +1,6 @@
-# 
-New-Item -Path "vercel.json" -ItemType File -Force
-
-
-@'
 {
   "buildCommand": "npm install --legacy-peer-deps && npm run build",
   "installCommand": "npm install --legacy-peer-deps",
   "framework": "nextjs",
   "outputDirectory": ".next"
 }
-'@ | Out-File -FilePath "vercel.json" -Encoding UTF8
