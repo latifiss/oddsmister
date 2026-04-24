@@ -4,6 +4,7 @@ import React, { useMemo, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import PredictionScoreItem from './predictionScoreItem';
 import { distributeCharts } from '@/utils/chartDistributor';
+import { formatTime } from '@/utils/timeFormatter';
 
 const ScoreWrapper = styled.div`
     display: flex;
@@ -233,8 +234,8 @@ const PredictionFeed = ({
             awayTeam={match.teams.away.name}
             homeImage={match.teams.home.logo}
             awayImage={match.teams.away.logo}
-            date={new Date(match.fixture.date).toLocaleDateString()}
-            time={new Date(match.fixture.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            date={new Date(match.fixture.date).toLocaleDateString('en-GB')}
+            time={formatTime(match.fixture.date)}
             homeScore={match.goals.home?.toString()}
             awayScore={match.goals.away?.toString()}
             status={match.fixture.status.short}

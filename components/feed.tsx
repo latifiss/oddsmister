@@ -5,6 +5,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import styled from 'styled-components';
 import ScoreBoard from './scoreBoard';
 import Image from 'next/image';
+import { formatTime } from '@/utils/timeFormatter';
 
 const Container = styled.div`
   display: flex;
@@ -229,15 +230,15 @@ export default function Feed({
                   awayTeam={match.teams.away.name}
                   homeImage={match.teams.home.logo}
                   awayImage={match.teams.away.logo}
-                  date={new Date(match.fixture.date).toLocaleDateString()}
-                  time={new Date(match.fixture.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  date={new Date(match.fixture.date).toLocaleDateString('en-GB')}
+                  time={formatTime(match.fixture.date)}
                   homeScore={match.goals.home?.toString()}
                   awayScore={match.goals.away?.toString()}
                   homeRedCard={match.teams.home.redCard}
                   awayRedCard={match.teams.away.redCard}
                   status={match.fixture.status.short}
                   minute={match.fixture.status.elapsed}
-                  isSuperboostAvailable={Math.random() < 0.3}
+                  isSuperboostAvailable={(match.fixture.id % 10) < 3}
                 />
                 {index < group.matches.length - 1 && <MatchDivider />}
               </React.Fragment>
