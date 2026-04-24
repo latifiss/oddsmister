@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { Suspense } from 'react';
 import LivescoreClient from './client';
 import { apiClient } from '@/lib/api/apiFootballClient';
 
@@ -30,12 +31,11 @@ interface GroupedMatch {
   matches: Match[];
 }
 
-interface PredictionResult {
-  fixtureId: number;
-  prediction: unknown;
-}
-
 const priorityLeagueIds = [39, 140, 78, 135, 61, 2, 3, 848];
+
+// Cache configuration
+export const revalidate = 60; // Revalidate every 60 seconds
+export const dynamic = 'force-static';
 
 async function getMatches(date?: string): Promise<Match[]> {
   try {
@@ -58,73 +58,8 @@ async function getLiveMatches(): Promise<Match[]> {
   }
 }
 
-async function getAllPredictions(matches: Match[]): Promise<Record<number, unknown>> {
-  try {
-    const fetchPromises = matches.slice(0, 10).map(async (match: Match) => {
-      try {
-        const data = await apiClient.getCached('predictions', { fixture: match.fixture.id }, { ttl: 3600 });
-        return { fixtureId: match.fixture.id, prediction: data.response?.[0] || null };
-      } catch {
-        return { fixtureId: match.fixture.id, prediction: null };
-      }
-    });
-    
-    const results = await Promise.all(fetchPromises);
-    const predictionsMap: Record<number, unknown> = {};
-    results.forEach((result: PredictionResult) => {
-      predictionsMap[result.fixtureId] = result.prediction;
-    });
-    return predictionsMap;
-  } catch (error) {
-    console.error('Failed to fetch predictions:', error);
-    return {};
-  }
-}
-
-export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
-  const params = await searchParams;
-  const date = params?.date ? new Date(params.date).toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }) : 'Today';
-  
-  const competition = params?.competition || 'All Competitions';
-  
-  return {
-    title: `${competition} Live Scores & Match Results | ${date} | OddS Mister`,
-    description: `Live football scores, match results, and betting odds for ${competition} on ${date}. Stay updated with real-time scores from major leagues including Premier League, La Liga, Bundesliga, and more.`,
-    keywords: `live scores, football scores, match results, ${competition}, soccer scores, live football, betting odds`,
-    openGraph: {
-      title: `Live Football Scores - ${date}`,
-      description: `Real-time scores and match updates from ${competition}`,
-      type: 'website',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: `Live Scores - ${date}`,
-      description: `Real-time football scores and updates`,
-    },
-  };
-}
-
-export default async function LivescorePage({ searchParams }: PageProps) {
-  const params = await searchParams;
-  const selectedDate = params?.date ? new Date(params.date) : new Date();
-  const selectedCompetition = params?.competition || null;
-  
-  const dateStr = selectedDate.toISOString().split('T')[0];
-  
-  const [matches, liveMatches] = await Promise.all([
-    getMatches(dateStr),
-    getLiveMatches(),
-  ]);
-  
-  const allMatches = [...liveMatches, ...matches];
-  const uniqueMatches = Array.from(new Map(allMatches.map(m => [m.fixture.id, m])).values());
-  
-  const predictionsMap = await getAllPredictions(uniqueMatches.slice(0, 10));
+function groupMatches(matches: Match[], selectedCompetition: string | null = null): GroupedMatch[] {
+  let filteredMatches = matches;
   
   const competitionLeagueIds: Record<string, number> = {
     'Premier League': 39,
@@ -139,13 +74,12 @@ export default async function LivescorePage({ searchParams }: PageProps) {
     'Conference League': 128,
   };
   
-  let filteredMatches = uniqueMatches;
   if (selectedCompetition) {
     const targetLeagueId = competitionLeagueIds[selectedCompetition];
     if (targetLeagueId) {
-      filteredMatches = uniqueMatches.filter(match => match.league.id === targetLeagueId);
+      filteredMatches = matches.filter(match => match.league.id === targetLeagueId);
     } else {
-      filteredMatches = uniqueMatches.filter(match => match.league.name === selectedCompetition);
+      filteredMatches = matches.filter(match => match.league.name === selectedCompetition);
     }
   }
   
@@ -185,11 +119,76 @@ export default async function LivescorePage({ searchParams }: PageProps) {
     return a.leagueName.localeCompare(b.leagueName);
   });
   
+  return groupedMatches;
+}
+
+// Loading skeleton component
+function LoadingSkeleton() {
+  return (
+    <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: '280px 1fr 350px', 
+        gap: '24px',
+        alignItems: 'start'
+      }}>
+        <div style={{ 
+          background: '#f5f5f5', 
+          borderRadius: '12px', 
+          padding: '20px',
+          height: '500px'
+        }} />
+        <div>
+          <div style={{ 
+            background: '#f5f5f5', 
+            borderRadius: '8px', 
+            padding: '20px',
+            marginBottom: '20px',
+            height: '100px'
+          }} />
+          <div style={{ 
+            background: '#f5f5f5', 
+            borderRadius: '8px', 
+            padding: '20px',
+            height: '400px'
+          }} />
+        </div>
+        <div style={{ 
+          background: '#f5f5f5', 
+          borderRadius: '12px', 
+          padding: '20px',
+          height: '500px'
+        }} />
+      </div>
+    </div>
+  );
+}
+
+// Main page component with streaming
+export default async function LivescorePage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const selectedDate = params?.date ? new Date(params.date) : new Date();
+  const selectedCompetition = params?.competition || null;
+  const dateStr = selectedDate.toISOString().split('T')[0];
+  
+  // Fetch initial data (matches only, no predictions)
+  const [matches, liveMatches] = await Promise.all([
+    getMatches(dateStr),
+    getLiveMatches(),
+  ]);
+  
+  const allMatches = [...liveMatches, ...matches];
+  const uniqueMatches = Array.from(new Map(allMatches.map(m => [m.fixture.id, m])).values());
+  
+  // Group matches for initial render
+  const groupedMatches = groupMatches(uniqueMatches, selectedCompetition);
+  
+  // Return the client component with initial data (no predictions yet)
   return (
     <LivescoreClient 
       initialMatches={uniqueMatches}
       initialGroupedMatches={groupedMatches}
-      initialPredictionsMap={predictionsMap}
+      initialPredictionsMap={{}}
       initialSelectedDate={selectedDate.toISOString()}
       initialSelectedCompetition={selectedCompetition}
     />

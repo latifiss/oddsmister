@@ -68,7 +68,7 @@ const MatchDivider = styled.div`
 const LoadingSpinner = styled.div`
   text-align: center;
   padding: 20px;
-  color: #666;
+  color: ${({ theme }) => theme.colors.grayText};
 `;
 
 const NoMatchesMessage = styled.div`
@@ -77,6 +77,58 @@ const NoMatchesMessage = styled.div`
   color: ${({ theme }) => theme.colors.grayText};
   font-size: 14px;
 `;
+
+const SkeletonMatch = styled.div`
+  padding: 16px;
+  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  animation: pulse 1.5s ease-in-out infinite;
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+`;
+
+const SkeletonLeagueSection = styled.div`
+  margin-bottom: 24px;
+`;
+
+const SkeletonHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: ${({ theme }) => theme.colors.adBg};
+  border-radius: 8px 8px 0 0;
+  
+  div {
+    background: ${({ theme }) => theme.colors.border};
+    border-radius: 4px;
+  }
+`;
+
+const LoadingSkeleton = () => {
+  return (
+    <Container>
+      {[1, 2, 3].map(i => (
+        <SkeletonLeagueSection key={i}>
+          <SkeletonHeader>
+            <div style={{ width: '24px', height: '24px' }} />
+            <div style={{ width: '150px', height: '20px' }} />
+          </SkeletonHeader>
+          {[1, 2, 3].map(j => (
+            <SkeletonMatch key={j}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ width: '100px', height: '20px', background: '#e0e0e0', borderRadius: '4px' }} />
+                <div style={{ width: '40px', height: '20px', background: '#e0e0e0', borderRadius: '4px' }} />
+              </div>
+            </SkeletonMatch>
+          ))}
+        </SkeletonLeagueSection>
+      ))}
+    </Container>
+  );
+};
 
 interface FeedProps {
   selectedDate?: Date;
@@ -97,6 +149,11 @@ export default function Feed({
   const { matches, isLoading, isError } = useMatches(dateStr);
   const { liveMatches } = useLiveMatches();
   const [hasInitialData, setHasInitialData] = useState(true);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !isError && (matches.length > 0 || liveMatches.length > 0)) {
@@ -116,9 +173,19 @@ export default function Feed({
       filtered.sort((a: any, b: any) => {
         const aIndex = priorityLeagueIds.indexOf(a.leagueId);
         const bIndex = priorityLeagueIds.indexOf(b.leagueId);
-        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-        if (aIndex !== -1) return -1;
-        if (bIndex !== -1) return 1;
+        
+        if (aIndex !== -1 && bIndex !== -1) {
+          return aIndex - bIndex;
+        }
+        
+        if (aIndex !== -1) {
+          return -1;
+        }
+        
+        if (bIndex !== -1) {
+          return 1;
+        }
+        
         return a.leagueName.localeCompare(b.leagueName);
       });
       
@@ -129,12 +196,15 @@ export default function Feed({
     const uniqueMatches = Array.from(new Map(allMatches.map(m => [m.fixture.id, m])).values());
     
     let filteredMatches = uniqueMatches;
+    
     if (selectedCompetition) {
       const leagueId = parseInt(selectedCompetition);
       filteredMatches = uniqueMatches.filter(match => match.league.id === leagueId);
     }
     
-    if (filteredMatches.length === 0) return { groups: [], hasMatches: false };
+    if (filteredMatches.length === 0) {
+      return { groups: [], hasMatches: false };
+    }
     
     const groups: Record<number, any> = {};
     filteredMatches.forEach((match) => {
@@ -152,38 +222,55 @@ export default function Feed({
     });
     
     const groupsArray = Object.values(groups);
+    
     groupsArray.sort((a: any, b: any) => {
       const aIndex = priorityLeagueIds.indexOf(a.leagueId);
       const bIndex = priorityLeagueIds.indexOf(b.leagueId);
-      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-      if (aIndex !== -1) return -1;
-      if (bIndex !== -1) return 1;
+      
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+      
+      if (aIndex !== -1) {
+        return -1;
+      }
+      
+      if (bIndex !== -1) {
+        return 1;
+      }
+      
       return a.leagueName.localeCompare(b.leagueName);
     });
     
     return { groups: groupsArray, hasMatches: groupsArray.length > 0 };
   }, [matches, liveMatches, selectedCompetition, hasInitialData, initialGroupedMatches]);
 
-  if (isLoading && !hasInitialData) return <LoadingSpinner data-cy="feed-loading">Loading matches...</LoadingSpinner>;
-  if (isError && !hasInitialData) return <LoadingSpinner data-cy="feed-error">Error loading matches</LoadingSpinner>;
+  // Show skeleton on server or during initial load
+  if (!isClient || (isLoading && !hasInitialData)) {
+    return <LoadingSkeleton />;
+  }
+  
+  if (isError && !hasInitialData) {
+    return <NoMatchesMessage>Error loading matches. Please try again.</NoMatchesMessage>;
+  }
 
   if (selectedCompetition && !filteredAndGroupedMatches.hasMatches) {
     return (
-      <NoMatchesMessage data-cy="no-matches-competition">
-        No matches available
+      <NoMatchesMessage>
+        No matches available for this competition
       </NoMatchesMessage>
     );
   }
 
   if (!filteredAndGroupedMatches.hasMatches && !selectedCompetition) {
-    return <NoMatchesMessage data-cy="no-matches-date">No matches available for this date</NoMatchesMessage>;
+    return <NoMatchesMessage>No matches available for this date</NoMatchesMessage>;
   }
 
   return (
-    <Container data-cy="matches-feed-container">
+    <Container>
       {filteredAndGroupedMatches.groups.map((group) => (
-        <LeagueSection key={group.leagueId} data-cy={`league-section-${group.leagueId}`}>
-          <LeagueHeader data-cy="league-header">
+        <LeagueSection key={group.leagueId}>
+          <LeagueHeader>
             {group.leagueLogo && (
               <LeagueLogo 
                 src={group.leagueLogo} 
@@ -197,7 +284,7 @@ export default function Feed({
               {group.country && <CountryName>• {group.country}</CountryName>}
             </LeagueName>
           </LeagueHeader>
-          <MatchesList data-cy="matches-list">
+          <MatchesList>
             {group.matches.map((match, index) => (
               <React.Fragment key={match.fixture.id}>
                 <ScoreBoard

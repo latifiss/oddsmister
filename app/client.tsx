@@ -4,7 +4,7 @@ import Feed from '@/components/feed';
 import PredictionFeed from '@/components/predictionFeed';
 import Tab from '@/components/tab';
 import DaySelector from '@/components/daySelector';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import styled, { ThemeContext } from 'styled-components';
 import Image from 'next/image';
@@ -310,6 +310,33 @@ const FeedContainer = styled.div`
     min-width: 0;
 `
 
+const LoadingOverlay = styled.div`
+    position: relative;
+    width: 100%;
+    
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        animation: shimmer 1.5s infinite;
+    }
+    
+    @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+    }
+`;
+
+const LoadingSpinner = styled.div`
+    text-align: center;
+    padding: 20px;
+    color: ${({ theme }) => theme.colors.grayText};
+`;
+
 const DesktopTab = ({ label, isActive, href, imageName }: { 
     label: string; 
     isActive: boolean; 
@@ -388,6 +415,13 @@ const LivescoreClient = ({
   const [themeKey, setThemeKey] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date(initialSelectedDate));
   const [selectedCompetition, setSelectedCompetition] = useState<string | null>(initialSelectedCompetition);
+  
+  // Progressive loading states
+  const [predictionsMap, setPredictionsMap] = useState<Record<number, unknown>>(initialPredictionsMap);
+  const [isLoadingPredictions, setIsLoadingPredictions] = useState(Object.keys(initialPredictionsMap).length === 0);
+  const [matches, setMatches] = useState(initialMatches);
+  const [groupedMatches, setGroupedMatches] = useState(initialGroupedMatches);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const sortedTabs = useMemo(() => {
     return STATIC_LEAGUES.map(league => ({
@@ -405,14 +439,59 @@ const LivescoreClient = ({
   }, [selectedCompetition]);
 
   const filteredMatches = useMemo(() => {
-    if (!selectedLeagueId) return initialMatches;
-    return initialMatches.filter(match => match.league.id === selectedLeagueId);
-  }, [initialMatches, selectedLeagueId]);
+    if (!selectedLeagueId) return matches;
+    return matches.filter(match => match.league.id === selectedLeagueId);
+  }, [matches, selectedLeagueId]);
 
   const filteredGroupedMatches = useMemo(() => {
-    if (!selectedLeagueId) return initialGroupedMatches;
-    return initialGroupedMatches.filter(group => group.leagueId === selectedLeagueId);
-  }, [initialGroupedMatches, selectedLeagueId]);
+    if (!selectedLeagueId) return groupedMatches;
+    return groupedMatches.filter(group => group.leagueId === selectedLeagueId);
+  }, [groupedMatches, selectedLeagueId]);
+
+  // Fetch predictions progressively
+  useEffect(() => {
+    const fetchPredictions = async () => {
+      if (Object.keys(predictionsMap).length > 0 || matches.length === 0) return;
+      
+      setIsLoadingPredictions(true);
+      
+      // Get unique fixture IDs from matches (limit to first 10 for performance)
+      const fixtureIds = matches.slice(0, 10).map(match => match.fixture.id);
+      
+      // Fetch predictions in small batches
+      const batchSize = 3;
+      const newPredictions: Record<number, unknown> = {};
+      
+      for (let i = 0; i < fixtureIds.length; i += batchSize) {
+        const batch = fixtureIds.slice(i, i + batchSize);
+        const batchPromises = batch.map(async (fixtureId) => {
+          try {
+            const response = await fetch(`/api/predictions?fixtureId=${fixtureId}`);
+            const data = await response.json();
+            if (data.response && data.response[0]) {
+              newPredictions[fixtureId] = data.response[0];
+            }
+          } catch (error) {
+            console.error(`Failed to fetch prediction for ${fixtureId}:`, error);
+          }
+        });
+        
+        await Promise.all(batchPromises);
+        
+        // Update UI progressively as each batch completes
+        setPredictionsMap(prev => ({ ...prev, ...newPredictions }));
+      }
+      
+      setIsLoadingPredictions(false);
+    };
+    
+    fetchPredictions();
+  }, [matches]);
+
+  // Handle hydration
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
     const handleThemeChange = () => {
@@ -439,19 +518,28 @@ const LivescoreClient = ({
     return () => window.removeEventListener('resize', checkDesktop);
   }, []);
 
-  const handleDayChange = (date: Date) => {
+  const handleDayChange = useCallback((date: Date) => {
     setSelectedDate(date);
     setSelectedCompetition(null);
+    // Reset predictions when changing date
+    setPredictionsMap({});
+    setIsLoadingPredictions(true);
+    
     const params = new URLSearchParams();
     params.set('date', date.toISOString().split('T')[0]);
     router.push(`${pathname}?${params.toString()}`);
-  };
+  }, [router, pathname]);
 
-  const handleCompetitionSelect = (competition: string) => {
+  const handleCompetitionSelect = useCallback((competition: string) => {
     setSelectedCompetition(competition);
-  };
+  }, []);
 
-  const predictionsArray = Object.values(initialPredictionsMap).filter(p => p !== null);
+  const predictionsArray = Object.values(predictionsMap).filter(p => p !== null);
+
+  // Show loading state during hydration
+  if (!isHydrated) {
+    return <LoadingSpinner>Loading...</LoadingSpinner>;
+  }
 
   return (
     <Wrapper key={themeKey}>
@@ -486,13 +574,17 @@ const LivescoreClient = ({
             <RightColumn>
               <PredictionsContainer>
                 <Title>Predictions</Title>
-                <PredictionFeed 
-                  initialPredictions={predictionsArray}
-                  limit={5}
-                  matches={initialMatches}
-                  isLoading={false}
-                  isError={false}
-                />
+                {isLoadingPredictions && predictionsArray.length === 0 ? (
+                  <LoadingSpinner>Loading predictions...</LoadingSpinner>
+                ) : (
+                  <PredictionFeed 
+                    initialPredictions={predictionsArray}
+                    limit={5}
+                    matches={matches}
+                    isLoading={isLoadingPredictions}
+                    isError={false}
+                  />
+                )}
               </PredictionsContainer>
             </RightColumn>
           </DesktopGrid>
@@ -528,13 +620,17 @@ const LivescoreClient = ({
             {activeTab === 'predictions' && (
               <PredictionsContainer>
                 <Title>Predictions</Title>
-                <PredictionFeed 
-                  initialPredictions={predictionsArray}
-                  limit={5}
-                  matches={initialMatches}
-                  isLoading={false}
-                  isError={false}
-                />
+                {isLoadingPredictions && predictionsArray.length === 0 ? (
+                  <LoadingSpinner>Loading predictions...</LoadingSpinner>
+                ) : (
+                  <PredictionFeed 
+                    initialPredictions={predictionsArray}
+                    limit={5}
+                    matches={matches}
+                    isLoading={isLoadingPredictions}
+                    isError={false}
+                  />
+                )}
               </PredictionsContainer>
             )}
           </TabContent>

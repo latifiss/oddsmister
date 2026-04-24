@@ -3,30 +3,27 @@ name: Update Predictions Daily
 
 on:
   schedule:
-    # Runs at 3:00 AM UTC every day
-    - cron: '0 3 * * *'
-  # Allows you to manually run the workflow from GitHub Actions tab
-  workflow_dispatch:
+    - cron: '0 3 * * *'  # Run at 3 AM UTC daily
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
   update-predictions:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Call update predictions endpoint
         run: |
           curl -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.NEXT_PUBLIC_BASE_URL }}/api/cron/update-predictions"
-        continue-on-error: false
-
+      
       - name: Log success
         if: success()
         run: echo "✅ Predictions updated successfully at $(date)"
-
+      
       - name: Log failure
         if: failure()
         run: echo "❌ Failed to update predictions at $(date)"

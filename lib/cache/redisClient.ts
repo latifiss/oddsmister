@@ -12,8 +12,10 @@ export const redis = new Redis({
   token: UPSTASH_TOKEN!,
 });
 
-redis.ping().then(() => {
-  console.log('✅ Upstash Redis connected successfully');
-}).catch((error) => {
-  console.error('❌ Redis connection error:', error);
-});
+if (typeof window === 'undefined') { 
+  redis.ping().then(() => {
+    console.log('✅ Upstash Redis connected successfully');
+  }).catch((error) => {
+    console.error('❌ Redis connection error:', error);
+  });
+}
