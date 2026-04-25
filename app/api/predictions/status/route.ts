@@ -1,39 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { redis } from '@/lib/cache/redisClient';
+import { NextResponse } from 'next/server';
+import { redis } from '@/lib/redis';
 
-export async function GET(request: NextRequest) {
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
   try {
-    // Get last update info
-    const lastUpdateRaw = await redis.get('predictions:last_update');
-    const lastUpdate = lastUpdateRaw ? JSON.parse(lastUpdateRaw as string) : null;
+    const predictions = await redis.get('predictions');
+    const lastUpdate = await redis.get('predictions_last_update');
+    const fixtureCount = await redis.get('predictions_fixture_count');
     
-    // Get cached fixtures list
-    const cachedFixturesRaw = await redis.get('predictions:cached_fixtures');
-    const cachedFixtures = cachedFixturesRaw ? JSON.parse(cachedFixturesRaw as string) : [];
+    let status = 'no_cache';
+    let cacheAgeMinutes = null;
     
-    // Calculate cache age
-    let cacheAge = null;
-    if (lastUpdate?.timestamp) {
-      const lastUpdateTime = new Date(lastUpdate.timestamp).getTime();
-      const now = Date.now();
-      cacheAge = Math.floor((now - lastUpdateTime) / 1000 / 60); // minutes
+    if (predictions && lastUpdate) {
+      const predictionsData = JSON.parse(predictions);
+      const lastUpdateDate = new Date(lastUpdate);
+      const now = new Date();
+      cacheAgeMinutes = Math.floor((now.getTime() - lastUpdateDate.getTime()) / 1000 / 60);
+      status = cacheAgeMinutes < 60 ? 'fresh' : 'stale';
+      
+      return NextResponse.json({
+        status: status,
+        cachedPredictions: predictionsData.length || 0,
+        lastUpdate: lastUpdate,
+        lastUpdateDate: lastUpdateDate.toLocaleString(),
+        cacheAgeMinutes: cacheAgeMinutes,
+        fixtureCount: parseInt(fixtureCount) || 0,
+        lastUpdateStats: {
+          age: `${cacheAgeMinutes} minutes ago`,
+          freshness: status === 'fresh' ? 'good' : 'needs refresh'
+        }
+      });
     }
     
     return NextResponse.json({
-      status: cachedFixtures.length > 0 ? 'healthy' : 'no_cache',
-      cachedPredictions: cachedFixtures.length,
-      lastUpdate: lastUpdate?.timestamp || null,
-      lastUpdateDate: lastUpdate?.date || null,
-      cacheAgeMinutes: cacheAge,
-      fixtureCount: lastUpdate?.fixtureCount || 0,
-      lastUpdateStats: lastUpdate ? {
-        successCount: lastUpdate.successCount,
-        failCount: lastUpdate.failCount,
-        duration: lastUpdate.duration
-      } : null
+      status: 'no_cache',
+      cachedPredictions: 0,
+      lastUpdate: null,
+      lastUpdateDate: null,
+      cacheAgeMinutes: null,
+      fixtureCount: 0,
+      lastUpdateStats: null
     });
+    
   } catch (error) {
-    console.error('Status check failed:', error);
-    return NextResponse.json({ error: 'Failed to get status' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to get status', details: error.message },
+      { status: 500 }
+    );
   }
 }

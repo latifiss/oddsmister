@@ -1,0 +1,13 @@
+{
+    "crons": [
+      {
+        "path": "/api/predictions/update",
+        "schedule": "45 11 * * *"
+      }
+    ],
+    "functions": {
+      "app/api/predictions/update/route.ts": {
+        "maxDuration": 300
+      }
+    }
+  }
