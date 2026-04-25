@@ -5,43 +5,40 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // Check if Redis is available
-    if (!process.env.UPSTASH_REDIS_REST_URL) {
-      return NextResponse.json({
-        status: 'error',
-        message: 'Redis not configured',
-        cachedPredictions: 0,
-        lastUpdate: null,
-        lastUpdateDate: null,
-        cacheAgeMinutes: null,
-        fixtureCount: 0
-      });
-    }
-    
-    const predictions = await redis.get('predictions');
+    const cachedData = await redis.get('predictions_feed');
     const lastUpdate = await redis.get('predictions_last_update');
     const fixtureCount = await redis.get('predictions_fixture_count');
+    const totalAvailable = await redis.get('predictions_total_available');
+    const selectedIds = await redis.get('predictions_selected_ids');
     
     let status = 'no_cache';
     let cacheAgeMinutes = null;
+    let predictionsData = [];
     
-    if (predictions && lastUpdate) {
-      const predictionsData = typeof predictions === 'string' ? JSON.parse(predictions) : predictions;
+    if (cachedData && lastUpdate) {
+      predictionsData = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
       const lastUpdateDate = new Date(lastUpdate as string);
       const now = new Date();
       cacheAgeMinutes = Math.floor((now.getTime() - lastUpdateDate.getTime()) / 1000 / 60);
-      status = cacheAgeMinutes < 1440 ? 'fresh' : 'stale'; // 24 hours
+      status = cacheAgeMinutes < 1440 ? 'fresh' : 'stale';
       
       return NextResponse.json({
         status: status,
-        cachedPredictions: Array.isArray(predictionsData) ? predictionsData.length : 0,
+        cachedPredictions: predictionsData.length,
         lastUpdate: lastUpdate,
         lastUpdateDate: lastUpdateDate.toLocaleString(),
         cacheAgeMinutes: cacheAgeMinutes,
         fixtureCount: parseInt(fixtureCount as string) || 0,
+        totalFixturesAvailable: parseInt(totalAvailable as string) || 0,
+        selectedFixtureIds: selectedIds ? JSON.parse(selectedIds as string) : [],
+        updateMethod: '10 random fixtures selected from today\'s matches',
+        predictionSource: 'API-Football /predictions endpoint',
         lastUpdateStats: {
           age: `${cacheAgeMinutes} minutes ago`,
-          freshness: status === 'fresh' ? 'good' : 'needs refresh'
+          freshness: status === 'fresh' ? 'good' : 'needs refresh',
+          nextUpdateIn: status === 'fresh' 
+            ? `${Math.max(0, 1440 - cacheAgeMinutes)} minutes` 
+            : 'overdue'
         }
       });
     }
@@ -53,6 +50,8 @@ export async function GET() {
       lastUpdateDate: null,
       cacheAgeMinutes: null,
       fixtureCount: 0,
+      totalFixturesAvailable: 0,
+      selectedFixtureIds: [],
       lastUpdateStats: null
     });
     

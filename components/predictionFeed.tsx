@@ -104,8 +104,8 @@ const PredictionFeed = ({
   isError: externalError
 }: PredictionFeedProps) => {
   const [predictionsData, setPredictionsData] = useState<Map<number, any>>(new Map());
-  const [loadingPredictions, setLoadingPredictions] = useState(initialPredictions.length === 0);
-  const [fetched, setFetched] = useState(initialPredictions.length > 0);
+  const [loadingPredictions, setLoadingPredictions] = useState(true); // Changed to true
+  const [fetched, setFetched] = useState(false);
   
   const { selectedMatches, chartDistribution } = useMemo(() => {
     if (!externalMatches || !externalMatches.length) {
@@ -142,47 +142,55 @@ const PredictionFeed = ({
     return { selectedMatches: selected, chartDistribution: newChartDistribution };
   }, [externalMatches, limit]);
 
+  // ✅ NEW: Fetch ALL predictions from our cache endpoint at once
   useEffect(() => {
-    if (initialPredictions.length > 0 && !fetched) {
-      const predictions = new Map();
-      initialPredictions.forEach(pred => {
-        if (pred && pred.fixture?.id) {
-          predictions.set(pred.fixture.id, pred);
-        }
-      });
-      setPredictionsData(predictions);
-      setFetched(true);
-      setLoadingPredictions(false);
-    }
-  }, [initialPredictions, fetched]);
-
-  useEffect(() => {
-    if (fetched || !selectedMatches.length) return;
-    const fetchPredictions = async () => {
+    const fetchPredictionsFromCache = async () => {
+      if (!selectedMatches.length || fetched) return;
+      
       setLoadingPredictions(true);
-      const predictions = new Map();
-      const fetchPromises = selectedMatches.map(async (match) => {
-        try {
-          const response = await fetch(`/api/predictions?fixtureId=${match.fixture.id}`);
-          const data = await response.json();
-          if (data.response && data.response[0]) {
-            predictions.set(match.fixture.id, data.response[0]);
-          }
-        } catch (error) {
-          console.error(`Failed to fetch prediction for ${match.fixture.id}:`, error);
+      try {
+        // ✅ Call OUR cache endpoint, NOT API-Football directly
+        const response = await fetch('/api/predictions/feed');
+        const data = await response.json();
+        
+        if (data.success && data.predictions) {
+          const predictions = new Map();
+          // The predictions come with fixture data included
+          data.predictions.forEach((pred: any) => {
+            predictions.set(pred.fixtureId, pred.predictions);
+          });
+          setPredictionsData(predictions);
+        } else {
+          console.warn('No predictions in cache:', data.message);
         }
-      });
-      await Promise.all(fetchPromises);
-      setPredictionsData(predictions);
-      setLoadingPredictions(false);
-      setFetched(true);
+      } catch (error) {
+        console.error('Failed to fetch predictions from cache:', error);
+      } finally {
+        setLoadingPredictions(false);
+        setFetched(true);
+      }
     };
-    fetchPredictions();
+    
+    fetchPredictionsFromCache();
   }, [selectedMatches, fetched]);
+
+  // ✅ Also support single fixture lookup if needed
+  const fetchSinglePrediction = async (fixtureId: number) => {
+    try {
+      const response = await fetch(`/api/predictions/feed?fixtureId=${fixtureId}`);
+      const data = await response.json();
+      if (data.success && data.prediction) {
+        return data.prediction.predictions;
+      }
+    } catch (error) {
+      console.error(`Failed to fetch prediction for ${fixtureId}:`, error);
+    }
+    return null;
+  };
 
   if (externalLoading) return <LoadingSpinner data-cy="predictions-external-loading">Loading matches...</LoadingSpinner>;
   if (externalError) return <LoadingSpinner data-cy="predictions-error">Error loading matches</LoadingSpinner>;
-  if (loadingPredictions && !fetched) return <LoadingSpinner data-cy="predictions-fetching">Loading predictions...</LoadingSpinner>;
+  if (loadingPredictions && !fetched) return <LoadingSpinner data-cy="predictions-fetching">Loading predictions from cache...</LoadingSpinner>;
   if (!selectedMatches.length) return <NoMatchesMessage data-cy="no-predictions-available">No upcoming matches available for predictions today</NoMatchesMessage>;
 
   return (

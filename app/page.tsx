@@ -30,11 +30,6 @@ interface GroupedMatch {
   matches: Match[];
 }
 
-interface PredictionResult {
-  fixtureId: number;
-  prediction: unknown;
-}
-
 const priorityLeagueIds = [39, 140, 78, 135, 61, 2, 3, 848];
 
 async function getMatches(date?: string): Promise<Match[]> {
@@ -58,28 +53,8 @@ async function getLiveMatches(): Promise<Match[]> {
   }
 }
 
-async function getAllPredictions(matches: Match[]): Promise<Record<number, unknown>> {
-  try {
-    const fetchPromises = matches.slice(0, 10).map(async (match: Match) => {
-      try {
-        const data = await apiClient.getCached('predictions', { fixture: match.fixture.id }, { ttl: 3600 });
-        return { fixtureId: match.fixture.id, prediction: data.response?.[0] || null };
-      } catch {
-        return { fixtureId: match.fixture.id, prediction: null };
-      }
-    });
-    
-    const results = await Promise.all(fetchPromises);
-    const predictionsMap: Record<number, unknown> = {};
-    results.forEach((result: PredictionResult) => {
-      predictionsMap[result.fixtureId] = result.prediction;
-    });
-    return predictionsMap;
-  } catch (error) {
-    console.error('Failed to fetch predictions:', error);
-    return {};
-  }
-}
+// ✅ REMOVED: getAllPredictions function - no longer needed!
+// Predictions will be fetched from cache on the client side
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const params = await searchParams;
@@ -124,7 +99,8 @@ export default async function LivescorePage({ searchParams }: PageProps) {
   const allMatches = [...liveMatches, ...matches];
   const uniqueMatches = Array.from(new Map(allMatches.map(m => [m.fixture.id, m])).values());
   
-  const predictionsMap = await getAllPredictions(uniqueMatches.slice(0, 10));
+  // ✅ NO MORE predictions fetching here!
+  // The client will fetch predictions from our cache endpoint
   
   const competitionLeagueIds: Record<string, number> = {
     'Premier League': 39,
@@ -189,7 +165,8 @@ export default async function LivescorePage({ searchParams }: PageProps) {
     <LivescoreClient 
       initialMatches={uniqueMatches}
       initialGroupedMatches={groupedMatches}
-      initialPredictionsMap={predictionsMap}
+      // ✅ No predictions passed - client will fetch from cache!
+      initialPredictionsMap={{}}
       initialSelectedDate={selectedDate.toISOString()}
       initialSelectedCompetition={selectedCompetition}
     />
