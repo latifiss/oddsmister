@@ -8,22 +8,40 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const fixtureId = searchParams.get('fixtureId');
     
-    // Read predictions from cache (NOT from API directly)
-    const cachedData = await redis.get('predictions_feed');
+    // Read predictions from cache
+    const cachedData = await redis.get('predictions_feed').catch(() => null);
+    const lastUpdate = await redis.get('predictions_last_update').catch(() => null);
     
     if (!cachedData) {
       return NextResponse.json({
         success: false,
-        message: 'No predictions available. Cache is empty. Cron job may not have run yet.',
+        message: 'No predictions available. Cache is empty. Run /api/predictions/update first.',
         predictions: null,
         lastUpdate: null
       });
     }
     
-    const predictions = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
-    const lastUpdate = await redis.get('predictions_last_update');
+    // Safely parse cached data
+    let predictions = [];
+    try {
+      if (typeof cachedData === 'string') {
+        predictions = JSON.parse(cachedData);
+      } else if (Array.isArray(cachedData)) {
+        predictions = cachedData;
+      } else {
+        predictions = [];
+      }
+    } catch (parseError) {
+      console.error('Failed to parse feed data:', parseError);
+      return NextResponse.json({
+        success: false,
+        message: 'Cache data is corrupted',
+        predictions: null,
+        error: 'Parse error'
+      });
+    }
     
-    // If fixtureId is provided, return prediction for specific fixture
+    // If fixtureId is provided, return specific prediction
     if (fixtureId) {
       const fixturePrediction = predictions.find(
         (p: any) => p.fixtureId === parseInt(fixtureId)
@@ -45,7 +63,7 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Otherwise return all predictions
+    // Return all predictions
     return NextResponse.json({
       success: true,
       message: 'Predictions retrieved from cache',
@@ -54,16 +72,18 @@ export async function GET(request: NextRequest) {
       lastUpdate: lastUpdate,
       cacheInfo: {
         totalFixturesProcessed: predictions.length,
-        cacheExpiry: '24 hours'
+        cacheExpiry: '24 hours',
+        lastUpdateTime: lastUpdate ? new Date(lastUpdate as string).toLocaleString() : null
       }
     });
     
   } catch (error) {
-    console.error('Error reading predictions from cache:', error);
+    console.error('Feed endpoint error:', error);
     return NextResponse.json(
       { 
         success: false, 
         error: 'Failed to retrieve predictions',
+        message: error instanceof Error ? error.message : 'Unknown error',
         predictions: null
       },
       { status: 500 }
