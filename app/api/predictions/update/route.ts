@@ -9,24 +9,34 @@ const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
 const API_FOOTBALL_HOST = 'v3.football.api-sports.io';
 
 export async function GET() {
+  const startTime = Date.now();
+  
   try {
     console.log('🔄 Predictions update started at:', new Date().toISOString());
     
+    // Check if API key exists
     if (!API_FOOTBALL_KEY) {
       throw new Error('API_FOOTBALL_KEY is not configured');
     }
     
     // 1. Fetch today's fixtures
     const today = new Date().toISOString().split('T')[0];
+    console.log(`📅 Fetching fixtures for date: ${today}`);
+    
     const fixturesResponse = await fetch(
       `https://${API_FOOTBALL_HOST}/fixtures?date=${today}&timezone=GMT`,
       {
         headers: {
           'x-rapidapi-key': API_FOOTBALL_KEY,
           'x-rapidapi-host': API_FOOTBALL_HOST
-        }
+        },
+        next: { revalidate: 0 } // Don't cache this fetch
       }
     );
+    
+    if (!fixturesResponse.ok) {
+      throw new Error(`API-Football responded with status: ${fixturesResponse.status}`);
+    }
     
     const fixturesData = await fixturesResponse.json();
     const allFixtures = fixturesData.response || [];
@@ -38,11 +48,12 @@ export async function GET() {
         success: true,
         message: 'No fixtures found for today',
         timestamp: new Date().toISOString(),
-        fixturesProcessed: 0
+        fixturesProcessed: 0,
+        totalFixturesAvailable: 0
       });
     }
     
-    // 2. Randomly select 10 matches
+    // 2. Randomly select 10 matches (or fewer if less than 10 available)
     const NUMBER_TO_PROCESS = 10;
     const shuffled = [...allFixtures];
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -52,12 +63,19 @@ export async function GET() {
     const selectedFixtures = shuffled.slice(0, Math.min(NUMBER_TO_PROCESS, allFixtures.length));
     
     console.log(`🎲 Randomly selected ${selectedFixtures.length} fixtures to fetch predictions for`);
+    console.log(`📋 Selected fixture IDs: ${selectedFixtures.map(f => f.fixture.id).join(', ')}`);
     
     // 3. Fetch predictions for each selected fixture using API-Football's predictions endpoint
     const predictionsData = [];
+    let successCount = 0;
+    let errorCount = 0;
     
-    for (const fixture of selectedFixtures) {
+    for (let i = 0; i < selectedFixtures.length; i++) {
+      const fixture = selectedFixtures[i];
+      
       try {
+        console.log(`⏳ [${i + 1}/${selectedFixtures.length}] Fetching predictions for fixture ${fixture.fixture.id}: ${fixture.teams.home.name} vs ${fixture.teams.away.name}`);
+        
         // Call API-Football's predictions endpoint
         const predictionsResponse = await fetch(
           `https://${API_FOOTBALL_HOST}/predictions?fixture=${fixture.fixture.id}`,
@@ -65,9 +83,16 @@ export async function GET() {
             headers: {
               'x-rapidapi-key': API_FOOTBALL_KEY,
               'x-rapidapi-host': API_FOOTBALL_HOST
-            }
+            },
+            next: { revalidate: 0 }
           }
         );
+        
+        if (!predictionsResponse.ok) {
+          console.warn(`⚠️ Failed to fetch predictions for fixture ${fixture.fixture.id}: HTTP ${predictionsResponse.status}`);
+          errorCount++;
+          continue;
+        }
         
         const predictionsApiData = await predictionsResponse.json();
         const predictions = predictionsApiData.response || [];
@@ -76,30 +101,43 @@ export async function GET() {
         predictionsData.push({
           fixtureId: fixture.fixture.id,
           fixture: {
+            id: fixture.fixture.id,
             homeTeam: fixture.teams.home.name,
             awayTeam: fixture.teams.away.name,
+            homeLogo: fixture.teams.home.logo,
+            awayLogo: fixture.teams.away.logo,
             date: fixture.fixture.date,
             venue: fixture.fixture.venue?.name || 'Unknown',
-            status: fixture.fixture.status.short
+            status: fixture.fixture.status.short,
+            elapsed: fixture.fixture.status.elapsed || null
           },
           league: {
             id: fixture.league.id,
             name: fixture.league.name,
             country: fixture.league.country,
-            logo: fixture.league.logo
+            logo: fixture.league.logo,
+            season: fixture.league.season
           },
-          predictions: predictions, // This is the actual API-Football predictions data
+          predictions: predictions, // This contains the actual prediction data
+          hasPredictions: predictions && predictions.length > 0,
           lastUpdated: new Date().toISOString()
         });
         
-        // Add delay to respect rate limits (500ms between requests)
-        await new Promise(resolve => setTimeout(resolve, 500));
+        successCount++;
+        
+        // Add delay to respect rate limits (600ms between requests to be safe)
+        if (i < selectedFixtures.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 600));
+        }
         
       } catch (error) {
-        console.error(`Error fetching predictions for fixture ${fixture.fixture.id}:`, error);
+        console.error(`❌ Error fetching predictions for fixture ${fixture.fixture.id}:`, error);
+        errorCount++;
         continue;
       }
     }
+    
+    console.log(`✅ Successfully fetched predictions for ${successCount} out of ${selectedFixtures.length} fixtures`);
     
     // 4. Store in Redis with 24 hour expiry
     await redis.set('predictions_feed', JSON.stringify(predictionsData), { ex: 86400 });
@@ -107,33 +145,59 @@ export async function GET() {
     await redis.set('predictions_fixture_count', predictionsData.length);
     await redis.set('predictions_total_available', allFixtures.length);
     await redis.set('predictions_selected_ids', JSON.stringify(selectedFixtures.map(f => f.fixture.id)));
+    await redis.set('predictions_success_count', successCount);
+    await redis.set('predictions_error_count', errorCount);
+    
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     
     const result = {
       success: true,
-      message: `Successfully fetched predictions for ${predictionsData.length} random fixtures`,
+      message: `Successfully fetched predictions for ${successCount} random fixtures`,
       timestamp: new Date().toISOString(),
       fixturesProcessed: predictionsData.length,
       totalFixturesAvailable: allFixtures.length,
-      nextUpdateIn: '24 hours'
+      successCount: successCount,
+      errorCount: errorCount,
+      durationSeconds: parseFloat(duration),
+      nextUpdateIn: '24 hours',
+      selectedFixtureIds: selectedFixtures.map(f => f.fixture.id)
     };
     
-    console.log('✅ Update completed:', result);
+    console.log(`🎉 Update completed in ${duration}s:`, result);
     
     return NextResponse.json(result, {
       headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'CDN-Cache-Control': 'no-cache'
       },
     });
     
   } catch (error) {
-    console.error('❌ Update failed:', error);
+    console.error('❌ Predictions update failed:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
     return NextResponse.json(
       { 
+        success: false,
         error: 'Update failed', 
-        details: error.message,
-        timestamp: new Date().toISOString()
+        details: errorMessage,
+        timestamp: new Date().toISOString(),
+        fixturesProcessed: 0
       },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        }
+      }
     );
   }
+}
+
+// Also support POST method for flexibility
+export async function POST() {
+  return GET();
 }

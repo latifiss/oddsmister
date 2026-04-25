@@ -16,7 +16,14 @@ export async function GET() {
     let predictionsData = [];
     
     if (cachedData && lastUpdate) {
-      predictionsData = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
+      // ✅ Safe parsing with error handling
+      try {
+        predictionsData = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
+      } catch (e) {
+        console.error('Failed to parse cached data:', e);
+        predictionsData = [];
+      }
+      
       const lastUpdateDate = new Date(lastUpdate as string);
       const now = new Date();
       cacheAgeMinutes = Math.floor((now.getTime() - lastUpdateDate.getTime()) / 1000 / 60);
@@ -24,7 +31,7 @@ export async function GET() {
       
       return NextResponse.json({
         status: status,
-        cachedPredictions: predictionsData.length,
+        cachedPredictions: Array.isArray(predictionsData) ? predictionsData.length : 0,
         lastUpdate: lastUpdate,
         lastUpdateDate: lastUpdateDate.toLocaleString(),
         cacheAgeMinutes: cacheAgeMinutes,
@@ -57,9 +64,16 @@ export async function GET() {
     
   } catch (error) {
     console.error('Status check error:', error);
-    return NextResponse.json(
-      { error: 'Failed to get status', cachedPredictions: 0 },
-      { status: 500 }
-    );
+    // ✅ Return a valid response even on error
+    return NextResponse.json({
+      status: 'error',
+      cachedPredictions: 0,
+      lastUpdate: null,
+      lastUpdateDate: null,
+      cacheAgeMinutes: null,
+      fixtureCount: 0,
+      totalFixturesAvailable: 0,
+      error: error.message
+    });
   }
 }
