@@ -1,60 +1,9 @@
 import { Metadata } from 'next';
 import LivescoreClient from './client';
-import { apiClient } from '@/lib/api/apiFootballClient';
 
 interface PageProps {
   searchParams?: Promise<{ date?: string; competition?: string }>;
 }
-
-interface Match {
-  fixture: {
-    id: number;
-    date: string;
-    status: { short: string; elapsed: number };
-    venue: { name: string; city: string };
-    referee: string | null;
-  };
-  teams: {
-    home: { name: string; logo: string; redCard?: number };
-    away: { name: string; logo: string; redCard?: number };
-  };
-  goals: { home: number | null; away: number | null };
-  league: { id: number; name: string; logo: string; country: string; season: number; round: string };
-}
-
-interface GroupedMatch {
-  leagueId: number;
-  leagueName: string;
-  leagueLogo: string;
-  country: string;
-  matches: Match[];
-}
-
-const priorityLeagueIds = [39, 140, 78, 135, 61, 2, 3, 848];
-
-async function getMatches(date?: string): Promise<Match[]> {
-  try {
-    const dateStr = date || new Date().toISOString().split('T')[0];
-    const data = await apiClient.getCached('fixtures', { date: dateStr }, { ttl: 300 });
-    return data.response || [];
-  } catch (error) {
-    console.error('Failed to fetch matches:', error);
-    return [];
-  }
-}
-
-async function getLiveMatches(): Promise<Match[]> {
-  try {
-    const data = await apiClient.getCached('fixtures', { live: 'all' }, { ttl: 60 });
-    return data.response || [];
-  } catch (error) {
-    console.error('Failed to fetch live matches:', error);
-    return [];
-  }
-}
-
-// ✅ REMOVED: getAllPredictions function - no longer needed!
-// Predictions will be fetched from cache on the client side
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const params = await searchParams;
@@ -86,87 +35,11 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 
 export default async function LivescorePage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const selectedDate = params?.date ? new Date(params.date) : new Date();
   const selectedCompetition = params?.competition || null;
-  
-  const dateStr = selectedDate.toISOString().split('T')[0];
-  
-  const [matches, liveMatches] = await Promise.all([
-    getMatches(dateStr),
-    getLiveMatches(),
-  ]);
-  
-  const allMatches = [...liveMatches, ...matches];
-  const uniqueMatches = Array.from(new Map(allMatches.map(m => [m.fixture.id, m])).values());
-  
-  // ✅ NO MORE predictions fetching here!
-  // The client will fetch predictions from our cache endpoint
-  
-  const competitionLeagueIds: Record<string, number> = {
-    'Premier League': 39,
-    'La Liga': 140,
-    'Bundesliga': 78,
-    'Serie A': 135,
-    'Ligue 1': 61,
-    'MLS': 253,
-    'Uefa Champions League': 2,
-    'World Cup': 1,
-    'Europa League': 3,
-    'Conference League': 128,
-  };
-  
-  let filteredMatches = uniqueMatches;
-  if (selectedCompetition) {
-    const targetLeagueId = competitionLeagueIds[selectedCompetition];
-    if (targetLeagueId) {
-      filteredMatches = uniqueMatches.filter(match => match.league.id === targetLeagueId);
-    } else {
-      filteredMatches = uniqueMatches.filter(match => match.league.name === selectedCompetition);
-    }
-  }
-  
-  const groups: Record<number, GroupedMatch> = {};
-  filteredMatches.forEach((match) => {
-    const leagueId = match.league.id;
-    if (!groups[leagueId]) {
-      groups[leagueId] = {
-        leagueId,
-        leagueName: match.league.name,
-        leagueLogo: match.league.logo,
-        country: match.league.country || '',
-        matches: []
-      };
-    }
-    groups[leagueId].matches.push(match);
-  });
-  
-  const groupedMatches = Object.values(groups);
-  
-  groupedMatches.sort((a, b) => {
-    const aIndex = priorityLeagueIds.indexOf(a.leagueId);
-    const bIndex = priorityLeagueIds.indexOf(b.leagueId);
-    
-    if (aIndex !== -1 && bIndex !== -1) {
-      return aIndex - bIndex;
-    }
-    
-    if (aIndex !== -1) {
-      return -1;
-    }
-    
-    if (bIndex !== -1) {
-      return 1;
-    }
-    
-    return a.leagueName.localeCompare(b.leagueName);
-  });
+  const selectedDate = params?.date ? new Date(params.date) : new Date();
   
   return (
     <LivescoreClient 
-      initialMatches={uniqueMatches}
-      initialGroupedMatches={groupedMatches}
-      // ✅ No predictions passed - client will fetch from cache!
-      initialPredictionsMap={{}}
       initialSelectedDate={selectedDate.toISOString()}
       initialSelectedCompetition={selectedCompetition}
     />

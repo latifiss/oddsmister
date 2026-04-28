@@ -17,37 +17,6 @@ async function getMatchData(fixtureId: number) {
   }
 }
 
-async function getPredictionsData(fixtureId: number) {
-  try {
-    const data = await apiClient.getCached('predictions', { fixture: fixtureId }, { ttl: 3600 });
-    return data.response?.[0] || null;
-  } catch (error) {
-    console.error(`Failed to fetch predictions for ${fixtureId}:`, error);
-    return null;
-  }
-}
-
-async function getOddsData(fixtureId: number) {
-  try {
-    const data = await apiClient.getCached('odds', { fixture: fixtureId }, { ttl: 300 });
-    return data.response?.[0] || null;
-  } catch (error) {
-    console.error(`Failed to fetch odds for ${fixtureId}:`, error);
-    return null;
-  }
-}
-
-async function getAllMatches() {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const data = await apiClient.getCached('fixtures', { date: today }, { ttl: 300 });
-    return data.response || [];
-  } catch (error) {
-    console.error('Failed to fetch matches:', error);
-    return [];
-  }
-}
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const fixtureId = parseInt(id);
@@ -111,26 +80,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function MatchDetailPage({ params }: PageProps) {
   const { id } = await params;
   const fixtureId = parseInt(id);
-  
-  const [match, predictionsData, oddsData, allMatches] = await Promise.all([
-    getMatchData(fixtureId),
-    getPredictionsData(fixtureId),
-    getOddsData(fixtureId),
-    getAllMatches(),
-  ]);
-  
-  if (!match) {
+
+  if (Number.isNaN(fixtureId)) {
     notFound();
   }
   
   return (
     <MatchDetailClient 
       fixtureId={fixtureId}
-      initialMatch={match}
-      initialPredictions={predictionsData}
-      initialOdds={oddsData}
-      initialMatches={allMatches}
-      matchesLoading={false}
+      initialMatch={null}
+      initialPredictions={null}
+      initialOdds={null}
+      initialMatches={[]}
+      matchesLoading
       matchesError={false}
     />
   );

@@ -5,6 +5,7 @@ import styled from 'styled-components';
 import PredictionScoreItem from './predictionScoreItem';
 import { distributeCharts } from '@/utils/chartDistributor';
 import { formatTime } from '@/utils/timeFormatter';
+import { PredictionFeedSkeleton } from './loadingSkeletons';
 
 const ScoreWrapper = styled.div`
     display: flex;
@@ -13,12 +14,6 @@ const ScoreWrapper = styled.div`
     width: 100%;
 `
 
-const LoadingSpinner = styled.div`
-  text-align: center;
-  padding: 20px;
-  color: #666;
-`;
-
 const NoMatchesMessage = styled.div`
   text-align: center;
   padding: 40px 20px;
@@ -26,7 +21,10 @@ const NoMatchesMessage = styled.div`
   font-size: 14px;
 `;
 
-const getMatchStatus = (status: string): string => {
+type MatchStatus = 'live' | 'halftime' | 'ended' | 'not_started';
+type ChartType = 'winProbability' | 'goalLine' | 'dualGauge';
+
+const getMatchStatus = (status: string): MatchStatus => {
   if (status === '1H' || status === '2H') return 'live';
   if (status === 'HT') return 'halftime';
   if (status === 'FT') return 'ended';
@@ -58,7 +56,7 @@ const getTodayDateString = (): string => {
   return new Date().toISOString().split('T')[0];
 };
 
-const getStoredSelectedFixtures = (): { fixtureIds: number[]; chartDistribution: string[] } | null => {
+const getStoredSelectedFixtures = (): { fixtureIds: number[]; chartDistribution: ChartType[] } | null => {
   try {
     const storedDate = localStorage.getItem(SELECTED_FIXTURES_DATE_KEY);
     const today = getTodayDateString();
@@ -78,7 +76,7 @@ const getStoredSelectedFixtures = (): { fixtureIds: number[]; chartDistribution:
   return null;
 };
 
-const storeSelectedFixtures = (fixtureIds: number[], chartDistribution: string[]): void => {
+const storeSelectedFixtures = (fixtureIds: number[], chartDistribution: ChartType[]): void => {
   try {
     localStorage.setItem(SELECTED_FIXTURES_KEY, JSON.stringify(fixtureIds));
     localStorage.setItem(CHART_DISTRIBUTION_KEY, JSON.stringify(chartDistribution));
@@ -88,10 +86,28 @@ const storeSelectedFixtures = (fixtureIds: number[], chartDistribution: string[]
   }
 };
 
+interface Match {
+  fixture: {
+    id: number;
+    date: string;
+    status: { short: string; elapsed: number };
+  };
+  teams: {
+    home: { name: string; logo: string };
+    away: { name: string; logo: string };
+  };
+  goals: { home: number | null; away: number | null };
+}
+
+interface CachedPrediction {
+  fixtureId: number;
+  predictions: unknown;
+}
+
 interface PredictionFeedProps {
-  initialPredictions?: any[];
+  initialPredictions?: CachedPrediction[];
   limit?: number;
-  matches?: any[];
+  matches?: Match[];
   isLoading?: boolean;
   isError?: boolean;
 }
@@ -103,11 +119,23 @@ const PredictionFeed = ({
   isLoading: externalLoading,
   isError: externalError
 }: PredictionFeedProps) => {
-  const [predictionsData, setPredictionsData] = useState<Map<number, any>>(new Map());
-  const [loadingPredictions, setLoadingPredictions] = useState(true); // Changed to true
-  const [fetched, setFetched] = useState(false);
+  const initialPredictionsMap = useMemo(() => {
+    const predictions = new Map<number, unknown>();
+
+    initialPredictions.forEach((item) => {
+      if (item?.fixtureId) {
+        predictions.set(item.fixtureId, item.predictions);
+      }
+    });
+
+    return predictions;
+  }, [initialPredictions]);
+
+  const [predictionsData, setPredictionsData] = useState<Map<number, unknown>>(initialPredictionsMap);
+  const [loadingPredictions, setLoadingPredictions] = useState(initialPredictionsMap.size === 0);
+  const [fetched, setFetched] = useState(initialPredictionsMap.size > 0);
   
-  const { selectedMatches, chartDistribution } = useMemo(() => {
+  const { selectedMatches, chartDistribution } = useMemo((): { selectedMatches: Match[]; chartDistribution: ChartType[] } => {
     if (!externalMatches || !externalMatches.length) {
       return { selectedMatches: [], chartDistribution: [] };
     }
@@ -127,13 +155,7 @@ const PredictionFeed = ({
       }
     }
     
-    const shuffled = [...notStartedMatches];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    
-    const selected = shuffled.slice(0, limit);
+    const selected = notStartedMatches.slice(0, limit);
     const newChartDistribution = distributeCharts(selected.length);
     if (selected.length > 0) {
       storeSelectedFixtures(selected.map(match => match.fixture.id), newChartDistribution);
@@ -154,9 +176,9 @@ const PredictionFeed = ({
         const data = await response.json();
         
         if (data.success && data.predictions) {
-          const predictions = new Map();
+          const predictions = new Map<number, unknown>();
           // The predictions come with fixture data included
-          data.predictions.forEach((pred: any) => {
+          data.predictions.forEach((pred: CachedPrediction) => {
             predictions.set(pred.fixtureId, pred.predictions);
           });
           setPredictionsData(predictions);
@@ -174,23 +196,9 @@ const PredictionFeed = ({
     fetchPredictionsFromCache();
   }, [selectedMatches, fetched]);
 
-  // ✅ Also support single fixture lookup if needed
-  const fetchSinglePrediction = async (fixtureId: number) => {
-    try {
-      const response = await fetch(`/api/predictions/feed?fixtureId=${fixtureId}`);
-      const data = await response.json();
-      if (data.success && data.prediction) {
-        return data.prediction.predictions;
-      }
-    } catch (error) {
-      console.error(`Failed to fetch prediction for ${fixtureId}:`, error);
-    }
-    return null;
-  };
-
-  if (externalLoading) return <LoadingSpinner data-cy="predictions-external-loading">Loading matches...</LoadingSpinner>;
-  if (externalError) return <LoadingSpinner data-cy="predictions-error">Error loading matches</LoadingSpinner>;
-  if (loadingPredictions && !fetched) return <LoadingSpinner data-cy="predictions-fetching">Loading predictions from cache...</LoadingSpinner>;
+  if (externalLoading && !selectedMatches.length) return <PredictionFeedSkeleton items={limit} />;
+  if (externalError && !selectedMatches.length) return <NoMatchesMessage data-cy="predictions-error">Error loading matches</NoMatchesMessage>;
+  if (loadingPredictions && !fetched) return <PredictionFeedSkeleton items={selectedMatches.length || limit} />;
   if (!selectedMatches.length) return <NoMatchesMessage data-cy="no-predictions-available">No upcoming matches available for predictions today</NoMatchesMessage>;
 
   return (
@@ -212,7 +220,8 @@ const PredictionFeed = ({
             time={formatTime(match.fixture.date)}
             homeScore={match.goals.home?.toString()}
             awayScore={match.goals.away?.toString()}
-            status={match.fixture.status.short}
+            status={getMatchStatus(match.fixture.status.short)}
+            isActive
             minute={match.fixture.status.elapsed}
             chartType={chartDistribution[index]}
             prediction={prediction}

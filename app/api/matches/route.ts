@@ -5,6 +5,7 @@ interface FixturesParams {
   date?: string;
   league?: string;
   live?: string;
+  id?: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -12,10 +13,13 @@ export async function GET(request: NextRequest) {
   const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
   const league = searchParams.get('league');
   const live = searchParams.get('live');
+  const fixtureId = searchParams.get('fixtureId');
 
   try {
     let data;
-    if (live === 'true') {
+    if (fixtureId) {
+      data = await apiClient.getCached('fixtures', { id: fixtureId }, { ttl: 300 });
+    } else if (live === 'true') {
       data = await apiClient.getCached('fixtures', { live: 'all' }, { ttl: 30 });
     } else {
       const params: FixturesParams = { date };

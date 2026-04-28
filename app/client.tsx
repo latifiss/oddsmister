@@ -5,6 +5,7 @@ import PredictionFeed from '@/components/predictionFeed';
 import Tab from '@/components/tab';
 import DaySelector from '@/components/daySelector';
 import React, { useState, useEffect, useMemo } from 'react';
+import { useMatches, useLiveMatches } from '@/hooks/useFootballData';
 import { usePathname, useRouter } from 'next/navigation';
 import styled, { ThemeContext } from 'styled-components';
 import Image from 'next/image';
@@ -35,11 +36,16 @@ interface GroupedMatch {
 }
 
 interface LivescoreClientProps {
-  initialMatches: Match[];
-  initialGroupedMatches: GroupedMatch[];
-  initialPredictionsMap: Record<number, unknown>;
+  initialMatches?: Match[];
+  initialGroupedMatches?: GroupedMatch[];
+  initialPredictionsMap?: Record<number, unknown>;
   initialSelectedDate: string;
   initialSelectedCompetition: string | null;
+}
+
+interface CachedPrediction {
+  fixtureId: number;
+  predictions: unknown;
 }
 
 const STATIC_LEAGUES = [
@@ -335,7 +341,7 @@ const DesktopTab = ({ label, isActive, href, imageName }: {
                         width={24}
                         height={24}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                        onError={(e) => {
+                        onError={() => {
                             console.error(`Failed to load image: ${imagePath}`);
                         }}
                     />
@@ -375,9 +381,9 @@ const MobileTab = ({ label, isActive, href, imageName, onClick }: {
 };
 
 const LivescoreClient = ({ 
-  initialMatches,
-  initialGroupedMatches,
-  initialPredictionsMap,
+  initialMatches = [],
+  initialGroupedMatches = [],
+  initialPredictionsMap = {},
   initialSelectedDate,
   initialSelectedCompetition
 }: LivescoreClientProps) => {
@@ -388,6 +394,9 @@ const LivescoreClient = ({
   const [themeKey, setThemeKey] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date(initialSelectedDate));
   const [selectedCompetition, setSelectedCompetition] = useState<string | null>(initialSelectedCompetition);
+  const dateStr = useMemo(() => selectedDate.toISOString().split('T')[0], [selectedDate]);
+  const { matches, isLoading: matchesLoading, isError: matchesError } = useMatches(dateStr);
+  const { liveMatches, isLoading: liveMatchesLoading, isError: liveMatchesError } = useLiveMatches();
 
   const sortedTabs = useMemo(() => {
     return STATIC_LEAGUES.map(league => ({
@@ -404,15 +413,59 @@ const LivescoreClient = ({
     return league?.id || null;
   }, [selectedCompetition]);
 
+  const resolvedMatches = useMemo(() => {
+    const liveData = Array.isArray(liveMatches) ? liveMatches : [];
+    const scheduledData = Array.isArray(matches) ? matches : [];
+    const combinedMatches = [...liveData, ...scheduledData];
+
+    if (combinedMatches.length === 0) {
+      return initialMatches;
+    }
+
+    return Array.from(new Map(combinedMatches.map(match => [match.fixture.id, match])).values());
+  }, [initialMatches, liveMatches, matches]);
+
+  const resolvedGroupedMatches = useMemo(() => {
+    if (resolvedMatches.length === 0) {
+      return initialGroupedMatches;
+    }
+
+    const groups: Record<number, GroupedMatch> = {};
+    resolvedMatches.forEach((match) => {
+      const leagueId = match.league.id;
+      if (!groups[leagueId]) {
+        groups[leagueId] = {
+          leagueId,
+          leagueName: match.league.name,
+          leagueLogo: match.league.logo,
+          country: match.league.country || '',
+          matches: [],
+        };
+      }
+      groups[leagueId].matches.push(match);
+    });
+
+    return Object.values(groups).sort((a, b) => {
+      const aIndex = STATIC_LEAGUES.findIndex((league) => league.id === a.leagueId);
+      const bIndex = STATIC_LEAGUES.findIndex((league) => league.id === b.leagueId);
+
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+
+      return a.leagueName.localeCompare(b.leagueName);
+    });
+  }, [initialGroupedMatches, resolvedMatches]);
+
   const filteredMatches = useMemo(() => {
-    if (!selectedLeagueId) return initialMatches;
-    return initialMatches.filter(match => match.league.id === selectedLeagueId);
-  }, [initialMatches, selectedLeagueId]);
+    if (!selectedLeagueId) return resolvedMatches;
+    return resolvedMatches.filter(match => match.league.id === selectedLeagueId);
+  }, [resolvedMatches, selectedLeagueId]);
 
   const filteredGroupedMatches = useMemo(() => {
-    if (!selectedLeagueId) return initialGroupedMatches;
-    return initialGroupedMatches.filter(group => group.leagueId === selectedLeagueId);
-  }, [initialGroupedMatches, selectedLeagueId]);
+    if (!selectedLeagueId) return resolvedGroupedMatches;
+    return resolvedGroupedMatches.filter(group => group.leagueId === selectedLeagueId);
+  }, [resolvedGroupedMatches, selectedLeagueId]);
 
   useEffect(() => {
     const handleThemeChange = () => {
@@ -451,7 +504,17 @@ const LivescoreClient = ({
     setSelectedCompetition(competition);
   };
 
-  const predictionsArray = Object.values(initialPredictionsMap).filter(p => p !== null);
+  const predictionsArray = Object.values(initialPredictionsMap ?? {}).filter(
+    (prediction): prediction is CachedPrediction =>
+      Boolean(prediction) &&
+      typeof prediction === 'object' &&
+      prediction !== null &&
+      'fixtureId' in prediction &&
+      'predictions' in prediction
+  );
+  const isFeedLoading = (matchesLoading || liveMatchesLoading) && filteredGroupedMatches.length === 0;
+  const isFeedError = Boolean(matchesError || liveMatchesError) && filteredGroupedMatches.length === 0;
+  const isPredictionsLoading = (matchesLoading || liveMatchesLoading) && filteredMatches.length === 0;
 
   return (
     <Wrapper key={themeKey}>
@@ -476,10 +539,9 @@ const LivescoreClient = ({
             <FeedColumn>
               <DaySelector onDayChange={handleDayChange} selectedDate={selectedDate} />
               <Feed 
-                selectedDate={selectedDate} 
-                selectedCompetition={selectedLeagueId ? selectedLeagueId.toString() : null}
-                initialMatches={filteredMatches}
-                initialGroupedMatches={filteredGroupedMatches}
+                groupedMatches={filteredGroupedMatches}
+                isLoading={isFeedLoading}
+                isError={isFeedError}
               />
             </FeedColumn>
 
@@ -489,8 +551,8 @@ const LivescoreClient = ({
                 <PredictionFeed 
                   initialPredictions={predictionsArray}
                   limit={5}
-                  matches={initialMatches}
-                  isLoading={false}
+                  matches={filteredMatches}
+                  isLoading={isPredictionsLoading}
                   isError={false}
                 />
               </PredictionsContainer>
@@ -518,10 +580,9 @@ const LivescoreClient = ({
                 </MobileTabRow>
                 <DaySelector onDayChange={handleDayChange} selectedDate={selectedDate} />
                 <Feed 
-                  selectedDate={selectedDate} 
-                  selectedCompetition={selectedLeagueId ? selectedLeagueId.toString() : null}
-                  initialMatches={filteredMatches}
-                  initialGroupedMatches={filteredGroupedMatches}
+                  groupedMatches={filteredGroupedMatches}
+                  isLoading={isFeedLoading}
+                  isError={isFeedError}
                 />
               </FeedContainer>
             )}
@@ -531,8 +592,8 @@ const LivescoreClient = ({
                 <PredictionFeed 
                   initialPredictions={predictionsArray}
                   limit={5}
-                  matches={initialMatches}
-                  isLoading={false}
+                  matches={filteredMatches}
+                  isLoading={isPredictionsLoading}
                   isError={false}
                 />
               </PredictionsContainer>

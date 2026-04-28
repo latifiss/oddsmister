@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -8,6 +8,8 @@ import { IoChevronForward } from 'react-icons/io5';
 import OddsDetailScreen from '@/components/oddsDetailScreen';
 import PredictionFeed from '@/components/predictionFeed';
 import ScoreBoard from '@/components/scoreBoard';
+import { MatchDetailSkeleton } from '@/components/loadingSkeletons';
+import { useMatches } from '@/hooks/useFootballData';
 
 interface Match {
   fixture: {
@@ -43,7 +45,7 @@ interface BreadcrumbProps {
 
 interface MatchDetailClientProps {
   fixtureId: number;
-  initialMatch: Match;
+  initialMatch: Match | null;
   initialPredictions: unknown;
   initialOdds: unknown;
   initialMatches?: Match[];
@@ -338,7 +340,71 @@ export default function MatchDetailClient({
   matchesLoading = false,
   matchesError = false
 }: MatchDetailClientProps) {
-  const match = initialMatch;
+  const [match, setMatch] = useState<Match | null>(initialMatch);
+  const [matchLoading, setMatchLoading] = useState(!initialMatch);
+  const [matchError, setMatchError] = useState<string | null>(null);
+  const sidebarDate = match?.fixture.date
+    ? new Date(match.fixture.date).toISOString().split('T')[0]
+    : new Date().toISOString().split('T')[0];
+  const { matches: sidebarMatchesResponse, isLoading: sidebarLoadingResponse, isError: sidebarErrorResponse } = useMatches(sidebarDate);
+  const sidebarMatches = sidebarMatchesResponse.length > 0 ? sidebarMatchesResponse : initialMatches;
+  const sidebarLoading = (matchesLoading || sidebarLoadingResponse) && sidebarMatches.length === 0;
+  const sidebarError = Boolean(matchesError || sidebarErrorResponse);
+
+  useEffect(() => {
+    if (initialMatch || !fixtureId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchMatch = async () => {
+      try {
+        setMatchLoading(true);
+        setMatchError(null);
+
+        const response = await fetch(`/api/matches?fixtureId=${fixtureId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch match');
+        }
+
+        const data = await response.json();
+        if (!isMounted) return;
+
+        setMatch(data.response?.[0] || null);
+      } catch (error) {
+        if (!isMounted) return;
+        setMatchError(error instanceof Error ? error.message : 'Failed to load match');
+      } finally {
+        if (isMounted) {
+          setMatchLoading(false);
+        }
+      }
+    };
+
+    fetchMatch();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fixtureId, initialMatch]);
+
+  if (matchLoading && !match) {
+    return (
+      <Wrapper data-cy="match-detail-wrapper">
+        <MatchDetailSkeleton />
+      </Wrapper>
+    );
+  }
+
+  if (!match) {
+    return (
+      <Wrapper data-cy="match-detail-wrapper">
+        <div>{matchError || 'Unable to load match details'}</div>
+      </Wrapper>
+    );
+  }
+
   const fixture = match.fixture;
   const teams = match.teams;
   const goals = match.goals;
@@ -407,9 +473,9 @@ export default function MatchDetailClient({
               <PredictionFeed 
                 initialPredictions={initialPredictions ? [initialPredictions] : []} 
                 limit={5}
-                matches={initialMatches}
-                isLoading={matchesLoading}
-                isError={matchesError}
+                matches={sidebarMatches}
+                isLoading={sidebarLoading}
+                isError={sidebarError}
               />
             </PredictionsContainer>
           </RightColumn>
