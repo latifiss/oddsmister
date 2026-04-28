@@ -164,20 +164,17 @@ const PredictionFeed = ({
     return { selectedMatches: selected, chartDistribution: newChartDistribution };
   }, [externalMatches, limit]);
 
-  // ✅ NEW: Fetch ALL predictions from our cache endpoint at once
   useEffect(() => {
     const fetchPredictionsFromCache = async () => {
       if (!selectedMatches.length || fetched) return;
       
       setLoadingPredictions(true);
       try {
-        // ✅ Call OUR cache endpoint, NOT API-Football directly
         const response = await fetch('/api/predictions/feed');
         const data = await response.json();
         
         if (data.success && data.predictions) {
           const predictions = new Map<number, unknown>();
-          // The predictions come with fixture data included
           data.predictions.forEach((pred: CachedPrediction) => {
             predictions.set(pred.fixtureId, pred.predictions);
           });

@@ -4,7 +4,6 @@ import { redis } from '@/lib/redis';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// API-Football configuration
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
 const API_FOOTBALL_HOST = 'v3.football.api-sports.io';
 
@@ -14,12 +13,10 @@ export async function GET() {
   try {
     console.log('🔄 Predictions update started at:', new Date().toISOString());
     
-    // Check if API key exists
     if (!API_FOOTBALL_KEY) {
       throw new Error('API_FOOTBALL_KEY is not configured');
     }
     
-    // 1. Fetch today's fixtures
     const today = new Date().toISOString().split('T')[0];
     console.log(`📅 Fetching fixtures for date: ${today}`);
     
@@ -30,7 +27,7 @@ export async function GET() {
           'x-rapidapi-key': API_FOOTBALL_KEY,
           'x-rapidapi-host': API_FOOTBALL_HOST
         },
-        next: { revalidate: 0 } // Don't cache this fetch
+        next: { revalidate: 0 }
       }
     );
     
@@ -53,7 +50,6 @@ export async function GET() {
       });
     }
     
-    // 2. Randomly select 10 matches (or fewer if less than 10 available)
     const NUMBER_TO_PROCESS = 10;
     const shuffled = [...allFixtures];
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -65,7 +61,6 @@ export async function GET() {
     console.log(`🎲 Randomly selected ${selectedFixtures.length} fixtures to fetch predictions for`);
     console.log(`📋 Selected fixture IDs: ${selectedFixtures.map(f => f.fixture.id).join(', ')}`);
     
-    // 3. Fetch predictions for each selected fixture using API-Football's predictions endpoint
     const predictionsData = [];
     let successCount = 0;
     let errorCount = 0;
@@ -76,7 +71,6 @@ export async function GET() {
       try {
         console.log(`⏳ [${i + 1}/${selectedFixtures.length}] Fetching predictions for fixture ${fixture.fixture.id}: ${fixture.teams.home.name} vs ${fixture.teams.away.name}`);
         
-        // Call API-Football's predictions endpoint
         const predictionsResponse = await fetch(
           `https://${API_FOOTBALL_HOST}/predictions?fixture=${fixture.fixture.id}`,
           {
@@ -97,7 +91,6 @@ export async function GET() {
         const predictionsApiData = await predictionsResponse.json();
         const predictions = predictionsApiData.response || [];
         
-        // Store prediction with fixture metadata
         predictionsData.push({
           fixtureId: fixture.fixture.id,
           fixture: {
@@ -118,14 +111,13 @@ export async function GET() {
             logo: fixture.league.logo,
             season: fixture.league.season
           },
-          predictions: predictions, // This contains the actual prediction data
+          predictions: predictions,
           hasPredictions: predictions && predictions.length > 0,
           lastUpdated: new Date().toISOString()
         });
         
         successCount++;
         
-        // Add delay to respect rate limits (600ms between requests to be safe)
         if (i < selectedFixtures.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 600));
         }
@@ -139,7 +131,6 @@ export async function GET() {
     
     console.log(`✅ Successfully fetched predictions for ${successCount} out of ${selectedFixtures.length} fixtures`);
     
-    // 4. Store in Redis with 24 hour expiry
     await redis.set('predictions_feed', JSON.stringify(predictionsData), { ex: 86400 });
     await redis.set('predictions_last_update', new Date().toISOString());
     await redis.set('predictions_fixture_count', predictionsData.length);
@@ -197,7 +188,6 @@ export async function GET() {
   }
 }
 
-// Also support POST method for flexibility
 export async function POST() {
   return GET();
 }

@@ -12,10 +12,9 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    const predictions: Record<number, any> = {};
+    const predictions: Record<number, unknown> = {};
     const missingIds: number[] = [];
     
-    // Get all predictions from Upstash Redis in parallel using pipeline
     const pipeline = redis.pipeline();
     for (const fixtureId of fixtureIds) {
       pipeline.get(`prediction:${fixtureId}`);
@@ -23,7 +22,6 @@ export async function GET(request: NextRequest) {
     
     const results = await pipeline.exec();
     
-    // Process results
     results?.forEach((result, index) => {
       const fixtureId = parseInt(fixtureIds[index]);
       if (result && result[1]) {
@@ -35,7 +33,6 @@ export async function GET(request: NextRequest) {
     
     console.log(`📊 Batch results: ${Object.keys(predictions).length} from cache, ${missingIds.length} missing`);
     
-    // If there are missing predictions, fetch them from API (fallback)
     if (missingIds.length > 0) {
       console.log(`🔄 Fetching ${missingIds.length} missing predictions from API...`);
       
@@ -46,7 +43,6 @@ export async function GET(request: NextRequest) {
           const data = await apiClient.getCached('predictions', { fixture: fixtureId }, { ttl: 43200 });
           if (data.response && data.response[0]) {
             predictions[fixtureId] = data.response[0];
-            // Cache for future requests
             await redis.setex(
               `prediction:${fixtureId}`,
               24 * 60 * 60,

@@ -1,8 +1,6 @@
-// app/api/live-scores/stream/route.ts
 import { NextRequest } from 'next/server';
 import { Redis } from '@upstash/redis';
 
-// Initialize Redis
 const redis = Redis.fromEnv();
 
 export async function GET(request: NextRequest) {
@@ -15,24 +13,20 @@ export async function GET(request: NextRequest) {
 
   const id = parseInt(fixtureId);
 
-  // Create SSE stream
   const stream = new ReadableStream({
     async start(controller) {
       let interval: NodeJS.Timeout;
       let isActive = true;
       
-      // Function to send updates
       const sendUpdate = async () => {
         if (!isActive) return;
         
         try {
-          // Read from Redis cache - this already returns a parsed object!
           const match = await redis.get(`live:${id}`);
           
           if (!isActive) return;
           
           if (match) {
-            // match is already an object, no need to parse!
             const eventData = {
               fixtureId: (match as any).fixture.id,
               status: (match as any).fixture.status.short,
@@ -50,7 +44,6 @@ export async function GET(request: NextRequest) {
               isActive = false;
             }
           } else {
-            // No data yet, send placeholder
             try {
               controller.enqueue(`data: ${JSON.stringify({ 
                 fixtureId: id, 
@@ -79,22 +72,18 @@ export async function GET(request: NextRequest) {
         }
       };
       
-      // Send initial update
       await sendUpdate().catch(console.error);
       
-      // Set up interval to push updates every 5 seconds
       interval = setInterval(() => {
         sendUpdate().catch(console.error);
       }, 5000);
       
-      // Clean up on connection close
       const cleanup = () => {
         isActive = false;
         if (interval) clearInterval(interval);
         try {
           controller.close();
         } catch (closeError) {
-          // Ignore close errors if already closed
         }
       };
       

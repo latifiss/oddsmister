@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // Get all Redis keys safely
     const [cachedData, lastUpdate, fixtureCount, totalAvailable, selectedIds, successCount, errorCount] = await Promise.all([
       redis.get('predictions_feed').catch(() => null),
       redis.get('predictions_last_update').catch(() => null),
@@ -16,7 +15,6 @@ export async function GET() {
       redis.get('predictions_error_count').catch(() => null),
     ]);
     
-    // If no cache exists
     if (!cachedData || !lastUpdate) {
       return NextResponse.json({
         status: 'no_cache',
@@ -33,10 +31,8 @@ export async function GET() {
       });
     }
     
-    // Safely parse cached data
     let predictionsArray = [];
     try {
-      // Check if cachedData is already an object or needs parsing
       if (typeof cachedData === 'string') {
         predictionsArray = JSON.parse(cachedData);
       } else if (Array.isArray(cachedData)) {
@@ -59,13 +55,11 @@ export async function GET() {
       });
     }
     
-    // Calculate cache age
     const lastUpdateDate = new Date(lastUpdate as string);
     const now = new Date();
     const cacheAgeMinutes = Math.floor((now.getTime() - lastUpdateDate.getTime()) / 1000 / 60);
     const isFresh = cacheAgeMinutes < 1440; // 24 hours
     
-    // Parse selected IDs if they exist
     let selectedIdsArray = [];
     if (selectedIds) {
       try {
@@ -101,7 +95,6 @@ export async function GET() {
   } catch (error) {
     console.error('Status endpoint error:', error);
     
-    // Return a graceful error response
     return NextResponse.json({
       status: 'error',
       cachedPredictions: 0,

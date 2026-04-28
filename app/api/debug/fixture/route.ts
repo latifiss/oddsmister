@@ -1,4 +1,3 @@
-// app/api/debug/fixture/route.ts
 import { NextResponse } from 'next/server';
 import { apiClient } from '@/lib/api/apiFootballClient';
 

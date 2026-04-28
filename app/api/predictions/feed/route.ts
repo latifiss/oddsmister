@@ -8,7 +8,6 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const fixtureId = searchParams.get('fixtureId');
     
-    // Read predictions from cache
     const cachedData = await redis.get('predictions_feed').catch(() => null);
     const lastUpdate = await redis.get('predictions_last_update').catch(() => null);
     
@@ -21,7 +20,6 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Safely parse cached data
     let predictions = [];
     try {
       if (typeof cachedData === 'string') {
@@ -41,10 +39,9 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // If fixtureId is provided, return specific prediction
     if (fixtureId) {
       const fixturePrediction = predictions.find(
-        (p: any) => p.fixtureId === parseInt(fixtureId)
+        (p: unknown) => (p as { fixtureId: number }).fixtureId === parseInt(fixtureId)
       );
       
       if (!fixturePrediction) {
@@ -63,7 +60,6 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Return all predictions
     return NextResponse.json({
       success: true,
       message: 'Predictions retrieved from cache',

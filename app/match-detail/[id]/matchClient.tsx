@@ -344,7 +344,6 @@ export default function MatchDetailClient({
   const goals = match.goals;
   const league = match.league;
   
-  // Pass the raw status short code directly - NO conversion!
   const rawStatus = fixture.status.short;
   
   return (

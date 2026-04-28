@@ -41,7 +41,6 @@ const CompetitionGroup = styled.div`
 `;
 
 const Board = () => {
-  // Group matches by competition
   const groupedMatches = matches.reduce((groups, match) => {
     const compKey = match.competition.name;
     if (!groups[compKey]) {

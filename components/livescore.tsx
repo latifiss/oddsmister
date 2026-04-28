@@ -1,4 +1,4 @@
-// components/LiveScoreBoard.tsx
+
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -138,8 +138,7 @@ export default function LiveScoreBoard({ fixtureId }: { fixtureId: number }) {
   const [localMinute, setLocalMinute] = useState<number>(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const lastUpdateRef = useRef<number>(0);
-
-  // Clean up timer on unmount
+  
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -148,38 +147,32 @@ export default function LiveScoreBoard({ fixtureId }: { fixtureId: number }) {
     };
   }, []);
 
-  // Start/stop local timer based on match status
   useEffect(() => {
     if (!liveScore) return;
 
     const isLive = liveScore.status === '1H' || liveScore.status === '2H';
     const isHalftime = liveScore.status === 'HT';
     
-    // Clear existing timer
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
     
     if (isLive) {
-      // Start local timer that increments every minute
-      // Sync with API minute on each update
       setLocalMinute(liveScore.minute);
       lastUpdateRef.current = liveScore.minute;
       
       timerRef.current = setInterval(() => {
         setLocalMinute(prev => {
-          // Don't go beyond 90+ minutes
           if (prev >= 90) {
-            // Check for injury time (90+)
             if (prev < 99) {
-              return prev + 0.5; // Increment by 0.5 for injury time
+              return prev + 0.5;
             }
             return prev;
           }
-          return prev + 0.5; // Increment by 0.5 minute every 30 seconds
+          return prev + 0.5;
         });
-      }, 30000); // Update every 30 seconds
+      }, 30000);
       
     } else if (isHalftime) {
       setLocalMinute(45);
@@ -195,10 +188,8 @@ export default function LiveScoreBoard({ fixtureId }: { fixtureId: number }) {
     };
   }, [liveScore?.status, liveScore?.minute]);
 
-  // Sync with API updates
   useEffect(() => {
     if (liveScore && (liveScore.status === '1H' || liveScore.status === '2H')) {
-      // When API updates, sync the local minute
       if (Math.abs(liveScore.minute - lastUpdateRef.current) > 1) {
         setLocalMinute(liveScore.minute);
         lastUpdateRef.current = liveScore.minute;
@@ -216,10 +207,8 @@ export default function LiveScoreBoard({ fixtureId }: { fixtureId: number }) {
       
       console.log('Connecting to live scores for fixture:', fixtureId);
       
-      // Tell server to start tracking
       fetch(`/api/live-scores?fixtureId=${fixtureId}`).catch(console.error);
       
-      // Open SSE connection
       eventSource = new EventSource(`/api/live-scores/stream?fixtureId=${fixtureId}`);
       
       eventSource.onopen = () => {
@@ -282,18 +271,15 @@ export default function LiveScoreBoard({ fixtureId }: { fixtureId: number }) {
       return <NotStartedBadge>Loading...</NotStartedBadge>;
     }
     
-    // Check for finished matches FIRST
     const finishedStatuses = ['FT', 'AET', 'PEN', 'FT_PEN'];
     if (finishedStatuses.includes(liveScore.status)) {
       return <FinishedBadge>Full Time</FinishedBadge>;
     }
     
-    // Check for halftime
     if (liveScore.status === 'HT') {
       return <HalfTimeBadge>Half Time</HalfTimeBadge>;
     }
     
-    // Check for live matches
     if (liveScore.status === '1H' || liveScore.status === '2H') {
       const displayMinute = localMinute > 0 ? localMinute : liveScore.minute;
       return (
@@ -306,7 +292,6 @@ export default function LiveScoreBoard({ fixtureId }: { fixtureId: number }) {
       );
     }
     
-    // Check for not started
     if (liveScore.status === 'NS') {
       return <NotStartedBadge>Not Started</NotStartedBadge>;
     }

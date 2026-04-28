@@ -273,7 +273,6 @@ const Tab = ({ label, isActive, href, TabImage }: TabProps) => (
 const Header = () => {
   const themeMode = useSelector((state: RootState) => state.theme.theme);
   
-  // Determine which logo to use based on theme
   const logoSrc = themeMode === "light" 
     ? "assets/logo/oi-logo.svg" 
     : "assets/logo/oi-logo.svg";

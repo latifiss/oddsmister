@@ -10,14 +10,12 @@ export async function POST(request: NextRequest) {
   }
   
   try {
-    // Clear all prediction caches
     const keys = await redis.keys('prediction:*');
     if (keys.length > 0) {
       await redis.del(...keys);
       console.log(`🗑️ Cleared ${keys.length} prediction caches`);
     }
     
-    // Trigger the cron job to refresh
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}/api/cron/update-predictions`, {
       headers: { 'Authorization': `Bearer ${secret}` }
