@@ -9,7 +9,7 @@ export function useMatches(date?: string) {
   const { data, error, mutate } = useSWR(
     `/api/matches?${params.toString()}`,
     fetcher,
-    { revalidateOnFocus: false, revalidateInterval: 60000 }
+    { revalidateOnFocus: false, revalidateInterval: 3600000 }
   );
 
   return {
@@ -20,26 +20,11 @@ export function useMatches(date?: string) {
   };
 }
 
-export function useLiveMatches() {
-  const { data, error, mutate } = useSWR(
-    '/api/matches?live=true',
-    fetcher,
-    { refreshInterval: 30000, revalidateOnFocus: true }
-  );
-
-  return {
-    liveMatches: data?.response || [],
-    isLoading: !error && !data,
-    isError: error,
-    mutate
-  };
-}
-
 export function useOdds(fixtureId: number | null) {
   const { data, error } = useSWR(
     fixtureId ? `/api/odds?fixtureId=${fixtureId}` : null,
     fetcher,
-    { revalidateOnFocus: false, revalidateInterval: 18000000 }
+    { revalidateOnFocus: false, revalidateInterval: 43200000 }
   );
 
   return {
@@ -53,7 +38,7 @@ export function usePredictions(fixtureId: number | null) {
   const { data, error } = useSWR(
     fixtureId ? `/api/predictions?fixtureId=${fixtureId}` : null,
     fetcher,
-    { revalidateOnFocus: false, revalidateInterval: 43200000 }
+    { revalidateOnFocus: false, revalidateInterval: 86400000 }
   );
 
   return {

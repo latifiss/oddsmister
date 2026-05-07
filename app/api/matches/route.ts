@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     if (fixtureId) {
       data = await apiClient.getCached('fixtures', { id: fixtureId }, { ttl: 300 });
     } else if (live === 'true') {
-      data = await apiClient.getCached('fixtures', { live: 'all' }, { ttl: 30 });
+      data = await apiClient.getCached('fixtures', { live: 'all' }, { ttl: 120 });
     } else {
       const params: FixturesParams = { date };
       if (league) params.league = league;

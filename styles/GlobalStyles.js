@@ -40,6 +40,62 @@ const GlobalStyles = createGlobalStyle`
     font-style: normal;
 }
 
+@font-face {
+    font-family: 'Garet';
+    src: url('/fonts/Garet-Black.woff2');
+    src: local('Garet Black'), local('Garet-Black'),
+        url('/fonts/Garet-Black.woff2') format('woff2'),
+        url('/fonts/Garet-Black.otf') format('otf'),
+        url('/fonts/Garet-Black.ttf') format('ttf');
+    font-weight: 900;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Garet';
+    src: url('/fonts/Garet-Bold.woff2');
+    src: local('Garet Bold'), local('Garet-Bold'),
+        url('/fonts/Garet-Bold.woff2') format('woff2'),
+        url('/fonts/Garet-Bold.otf') format('otf'),
+        url('/fonts/Garet-Bold.ttf') format('ttf');
+    font-weight: 700;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Garet';
+    src: url('/fonts/Garet-Book.woff2');
+    src: local('Garet Book'), local('Garet-Book'),
+        url('/fonts/Garet-Book.woff2') format('woff2'),
+        url('/fonts/Garet-Book.otf') format('otf'),
+        url('/fonts/Garet-Book.ttf') format('ttf');
+    font-weight: 400;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Garet';
+    src: url('/fonts/Garet-Medium.woff2');
+    src: local('Garet Medium'), local('Garet-Medium'),
+        url('/fonts/Garet-Medium.woff2') format('woff2'),
+        url('/fonts/Garet-Medium.otf') format('otf'),
+        url('/fonts/Garet-Medium.ttf') format('ttf');
+    font-weight: 500;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Garet';
+    src: url('/fonts/Garet-Heavey.woff2');
+    src: local('Garet Heavey'), local('Garet-Heavey'),
+        url('/fonts/Garet-Heavey.woff2') format('woff2'),
+        url('/fonts/Garet-Heavey.otf') format('otf'),
+        url('/fonts/Garet-Heavey.ttf') format('ttf');
+    font-weight: 500;
+    font-style: normal;
+}
+
+
     *, *::before, *::after {
         margin: 0;
         padding: 0;
@@ -47,7 +103,7 @@ const GlobalStyles = createGlobalStyle`
     }
 
     body {
-        font-family: 'Sofascore Sans', -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Fira Sans", Ubuntu, Oxygen, "Oxygen Sans", Cantarell, "Droid Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Lucida Grande", Helvetica, Arial, sans-serif;
+        font-family: 'Garet', -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Fira Sans", Ubuntu, Oxygen, "Oxygen Sans", Cantarell, "Droid Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Lucida Grande", Helvetica, Arial, sans-serif;
         line-height: 1.5;
         background-color: ${({ theme }) => theme.colors.background};
         padding: 0;

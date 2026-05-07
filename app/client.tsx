@@ -5,7 +5,7 @@ import PredictionFeed from '@/components/predictionFeed';
 import Tab from '@/components/tab';
 import DaySelector from '@/components/daySelector';
 import React, { useState, useEffect, useMemo } from 'react';
-import { useMatches, useLiveMatches } from '@/hooks/useFootballData';
+import { useMatches } from '@/hooks/useFootballData';
 import { usePathname, useRouter } from 'next/navigation';
 import styled, { ThemeContext } from 'styled-components';
 import Image from 'next/image';
@@ -396,7 +396,6 @@ const LivescoreClient = ({
   const [selectedCompetition, setSelectedCompetition] = useState<string | null>(initialSelectedCompetition);
   const dateStr = useMemo(() => selectedDate.toISOString().split('T')[0], [selectedDate]);
   const { matches, isLoading: matchesLoading, isError: matchesError } = useMatches(dateStr);
-  const { liveMatches, isLoading: liveMatchesLoading, isError: liveMatchesError } = useLiveMatches();
 
   const sortedTabs = useMemo(() => {
     return STATIC_LEAGUES.map(league => ({
@@ -414,16 +413,14 @@ const LivescoreClient = ({
   }, [selectedCompetition]);
 
   const resolvedMatches = useMemo(() => {
-    const liveData = Array.isArray(liveMatches) ? liveMatches : [];
     const scheduledData = Array.isArray(matches) ? matches : [];
-    const combinedMatches = [...liveData, ...scheduledData];
-
-    if (combinedMatches.length === 0) {
+    
+    if (scheduledData.length === 0) {
       return initialMatches;
     }
 
-    return Array.from(new Map(combinedMatches.map(match => [match.fixture.id, match])).values());
-  }, [initialMatches, liveMatches, matches]);
+    return scheduledData;
+  }, [initialMatches, matches]);
 
   const resolvedGroupedMatches = useMemo(() => {
     if (resolvedMatches.length === 0) {
@@ -512,9 +509,9 @@ const LivescoreClient = ({
       'fixtureId' in prediction &&
       'predictions' in prediction
   );
-  const isFeedLoading = (matchesLoading || liveMatchesLoading) && filteredGroupedMatches.length === 0;
-  const isFeedError = Boolean(matchesError || liveMatchesError) && filteredGroupedMatches.length === 0;
-  const isPredictionsLoading = (matchesLoading || liveMatchesLoading) && filteredMatches.length === 0;
+  const isFeedLoading = matchesLoading && filteredGroupedMatches.length === 0;
+  const isFeedError = matchesError && filteredGroupedMatches.length === 0;
+  const isPredictionsLoading = matchesLoading && filteredMatches.length === 0;
 
   return (
     <Wrapper key={themeKey}>
