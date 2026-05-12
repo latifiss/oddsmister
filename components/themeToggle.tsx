@@ -51,9 +51,6 @@ export function ThemeToggle() {
 
   useEffect(() => {
     if (mounted) {
-      console.log('Current theme:', theme)
-      console.log('Resolved theme:', resolvedTheme)
-      console.log('HTML class:', document.documentElement.className)
     }
   }, [theme, resolvedTheme, mounted])
 
@@ -71,7 +68,6 @@ export function ThemeToggle() {
       <Button 
         onClick={() => {
           const next = resolvedTheme === 'light' ? 'dark' : 'light'
-          console.log('Setting theme to (resolved):', next)
           setTheme(next)
         }}
         aria-label="Toggle theme"

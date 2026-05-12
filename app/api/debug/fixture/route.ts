@@ -10,7 +10,6 @@ export async function GET(request: Request) {
   }
   
   try {
-    console.log(`Checking fixture ${id}...`);
     const data = await apiClient.getCached('fixtures', { id }, { ttl: 300 });
     
     return NextResponse.json({

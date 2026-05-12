@@ -38,7 +38,6 @@ export async function GET(request: NextRequest) {
             
             try {
               controller.enqueue(`data: ${JSON.stringify(eventData)}\n\n`);
-              console.log(`Sent update for match ${id}: ${eventData.homeScore}-${eventData.awayScore}`);
             } catch (enqueueError) {
               console.error('Failed to enqueue:', enqueueError);
               isActive = false;

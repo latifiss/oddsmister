@@ -20,26 +20,20 @@ export default defineConfig({
     },
 
     setupNodeEvents(on, config) {
-      // Initialize code coverage
       codeCoverageTask(on, config);
 
-      // Define Node-side tasks (Terminal logging)
       on('task', {
         log(message: unknown) {
-          console.log(message);
           return null;
         },
         error(message: unknown) {
-          console.error(message);
           return null;
         },
         table(message: unknown) {
-          console.table(message);
           return null;
         },
       });
 
-      // Browser launch modification
       on('before:browser:launch', (browser, launchOptions) => {
         if (browser.family === 'chromium' && browser.name !== 'electron') {
           launchOptions.args.push(
@@ -55,14 +49,11 @@ export default defineConfig({
         return launchOptions;
       });
 
-      // Node-level spec event
       on('after:spec', (spec, results) => {
         if (results?.video) {
-          console.log(`Video saved: ${results.video}`);
         }
       });
 
-      // Always return the config object
       return config;
     },
   },

@@ -31,10 +31,8 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    console.log(`📊 Batch results: ${Object.keys(predictions).length} from cache, ${missingIds.length} missing`);
     
     if (missingIds.length > 0) {
-      console.log(`🔄 Fetching ${missingIds.length} missing predictions from API...`);
       
       const { apiClient } = await import('@/lib/api/apiFootballClient');
       
@@ -49,7 +47,6 @@ export async function GET(request: NextRequest) {
               JSON.stringify(data.response[0])
             );
           }
-          // Add delay to avoid rate limits
           await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
           console.error(`Failed to fetch prediction for ${fixtureId}:`, error);

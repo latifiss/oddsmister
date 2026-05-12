@@ -205,7 +205,6 @@ export default function LiveScoreBoard({ fixtureId }: { fixtureId: number }) {
     const connect = () => {
       if (!isMounted) return;
       
-      console.log('Connecting to live scores for fixture:', fixtureId);
       
       fetch(`/api/live-scores?fixtureId=${fixtureId}`).catch(console.error);
       
@@ -213,7 +212,6 @@ export default function LiveScoreBoard({ fixtureId }: { fixtureId: number }) {
       
       eventSource.onopen = () => {
         if (isMounted) {
-          console.log('SSE connection opened');
           setConnectionStatus('connected');
         }
       };
@@ -222,7 +220,6 @@ export default function LiveScoreBoard({ fixtureId }: { fixtureId: number }) {
         if (isMounted) {
           try {
             const data = JSON.parse(event.data);
-            console.log('Received update from API:', data);
             setLiveScore(data);
           } catch (error) {
             console.error('Failed to parse SSE data:', error);

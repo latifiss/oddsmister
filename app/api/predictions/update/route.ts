@@ -11,14 +11,11 @@ export async function GET() {
   const startTime = Date.now();
   
   try {
-    console.log('🔄 Predictions update started at:', new Date().toISOString());
-    
     if (!API_FOOTBALL_KEY) {
       throw new Error('API_FOOTBALL_KEY is not configured');
     }
     
     const today = new Date().toISOString().split('T')[0];
-    console.log(`📅 Fetching fixtures for date: ${today}`);
     
     const fixturesResponse = await fetch(
       `https://${API_FOOTBALL_HOST}/fixtures?date=${today}&timezone=GMT`,
@@ -38,8 +35,6 @@ export async function GET() {
     const fixturesData = await fixturesResponse.json();
     const allFixtures = fixturesData.response || [];
     
-    console.log(`📊 Found ${allFixtures.length} total fixtures for ${today}`);
-    
     if (allFixtures.length === 0) {
       return NextResponse.json({
         success: true,
@@ -58,9 +53,6 @@ export async function GET() {
     }
     const selectedFixtures = shuffled.slice(0, Math.min(NUMBER_TO_PROCESS, allFixtures.length));
     
-    console.log(`🎲 Randomly selected ${selectedFixtures.length} fixtures to fetch predictions for`);
-    console.log(`📋 Selected fixture IDs: ${selectedFixtures.map(f => f.fixture.id).join(', ')}`);
-    
     const predictionsData = [];
     let successCount = 0;
     let errorCount = 0;
@@ -69,8 +61,6 @@ export async function GET() {
       const fixture = selectedFixtures[i];
       
       try {
-        console.log(`⏳ [${i + 1}/${selectedFixtures.length}] Fetching predictions for fixture ${fixture.fixture.id}: ${fixture.teams.home.name} vs ${fixture.teams.away.name}`);
-        
         const predictionsResponse = await fetch(
           `https://${API_FOOTBALL_HOST}/predictions?fixture=${fixture.fixture.id}`,
           {
@@ -83,7 +73,6 @@ export async function GET() {
         );
         
         if (!predictionsResponse.ok) {
-          console.warn(`⚠️ Failed to fetch predictions for fixture ${fixture.fixture.id}: HTTP ${predictionsResponse.status}`);
           errorCount++;
           continue;
         }
@@ -123,13 +112,10 @@ export async function GET() {
         }
         
       } catch (error) {
-        console.error(`❌ Error fetching predictions for fixture ${fixture.fixture.id}:`, error);
         errorCount++;
         continue;
       }
     }
-    
-    console.log(`✅ Successfully fetched predictions for ${successCount} out of ${selectedFixtures.length} fixtures`);
     
     await redis.set('predictions_feed', JSON.stringify(predictionsData), { ex: 86400 });
     await redis.set('predictions_last_update', new Date().toISOString());
@@ -154,8 +140,6 @@ export async function GET() {
       selectedFixtureIds: selectedFixtures.map(f => f.fixture.id)
     };
     
-    console.log(`🎉 Update completed in ${duration}s:`, result);
-    
     return NextResponse.json(result, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -166,8 +150,6 @@ export async function GET() {
     });
     
   } catch (error) {
-    console.error('❌ Predictions update failed:', error);
-    
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
     return NextResponse.json(

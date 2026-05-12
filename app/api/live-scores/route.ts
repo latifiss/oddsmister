@@ -28,7 +28,6 @@ export async function GET(request: Request) {
 }
 
 async function startPollingMatch(fixtureId: number) {
-  console.log(`Started polling match ${fixtureId}`);
   
   await fetchAndCacheMatch(fixtureId);
   
@@ -48,14 +47,12 @@ async function fetchAndCacheMatch(fixtureId: number) {
       await redis.set(`live:${fixtureId}`, match, { ex: 300 });
       
       const status = match.fixture.status.short;
-      console.log(`Updated match ${fixtureId}: ${status} - ${match.goals.home}:${match.goals.away}`);
       
       if (status === 'FT' || status === 'AET' || status === 'PEN') {
         const interval = activeMatches.get(fixtureId);
         if (interval) {
           clearInterval(interval);
           activeMatches.delete(fixtureId);
-          console.log(`Stopped polling match ${fixtureId} (finished)`);
         }
       }
     }

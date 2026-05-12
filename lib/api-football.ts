@@ -26,13 +26,12 @@ export async function fetchOdds(fixtureId: number) {
 }
 
 export function generatePredictions(fixtures: any[], oddsData: any[]) {
-  // Your prediction logic here
   return fixtures.map(fixture => ({
     fixtureId: fixture.fixture.id,
     homeTeam: fixture.teams.home.name,
     awayTeam: fixture.teams.away.name,
-    prediction: 'Home Win', // Your logic here
-    confidence: Math.floor(Math.random() * 30) + 70, // 70-100%
+    prediction: 'Home Win', 
+    confidence: Math.floor(Math.random() * 30) + 70, 
     odds: oddsData.find(o => o.fixtureId === fixture.fixture.id)?.odds || null
   }));
 }

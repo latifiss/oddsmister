@@ -65,9 +65,7 @@ export async function GET(request: Request) {
     if (!await shouldRun()) {
       return NextResponse.json({ message: 'Skipped - already ran recently' });
     }
-    
-    console.log('Starting pre-fetch job...');
-    
+        
     const matches = await getPopularMatches();
     
     const results = await Promise.allSettled(

@@ -13,7 +13,6 @@ export async function POST(request: NextRequest) {
     const keys = await redis.keys('prediction:*');
     if (keys.length > 0) {
       await redis.del(...keys);
-      console.log(`🗑️ Cleared ${keys.length} prediction caches`);
     }
     
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';

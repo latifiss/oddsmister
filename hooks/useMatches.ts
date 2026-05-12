@@ -24,7 +24,7 @@ export function useLiveMatches() {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const socketInstance = io(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001');
+    const socketInstance = io(process.env.NEXT_PUBLIC_WS_URL || ' ');
     setSocket(socketInstance);
 
     socketInstance.on('connect', () => {
