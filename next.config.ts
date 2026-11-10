@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   images: {
     remotePatterns: [
       {
@@ -11,7 +8,8 @@ const nextConfig: NextConfig = {
         hostname: "**",
       },
     ],
-    unoptimized: true,
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 60 * 60 * 24,
   },
   compiler: {
     styledComponents: true,
@@ -28,7 +26,7 @@ const nextConfig: NextConfig = {
         net: false,
         tls: false,
       };
-      
+
       config.externals = [
         ...(config.externals || []),
         { redis: 'redis' },
