@@ -97,7 +97,7 @@ class APIFootballClient {
     if (!forceRefresh) {
       try {
         const cached = await redis.get<T>(cacheKey);
-        if (cached !== null && cached !== undefined) return cached;
+        if (cached !== null && cached !== undefined) {\n          if (typeof cached === 'string') {\n            try {\n              return JSON.parse(cached) as T;\n            } catch {\n              // Ignore malformed cache entries and refresh from the upstream API.\n            }\n          } else {\n            return cached;\n          }\n        }
       } catch (error) {
         console.warn('[api-cache] Cache read failed; falling back to API:', error);
       }
