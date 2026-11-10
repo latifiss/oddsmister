@@ -1,35 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiClient } from '@/lib/api/apiFootballClient';
 
-interface FixturesParams {
-  date?: string;
-  league?: string;
-  live?: string;
-  id?: string;
-}
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+  const date = searchParams.get('date') || new Date().toISOString().slice(0, 10);
   const league = searchParams.get('league');
   const live = searchParams.get('live');
   const fixtureId = searchParams.get('fixtureId');
 
+  if (fixtureId && (!/^\d+$/.test(fixtureId) || Number(fixtureId) <= 0)) {
+    return NextResponse.json({ error: 'A valid fixtureId is required' }, { status: 400 });
+  }
+  if (!fixtureId && live !== 'true' && !DATE_PATTERN.test(date)) {
+    return NextResponse.json({ error: 'Date must use YYYY-MM-DD format' }, { status: 400 });
+  }
+  if (league && (!/^\d+$/.test(league) || Number(league) <= 0)) {
+    return NextResponse.json({ error: 'League must be a valid numeric ID' }, { status: 400 });
+  }
+
   try {
-    let data;
-    if (fixtureId) {
-      data = await apiClient.getCached('fixtures', { id: fixtureId }, { ttl: 300 });
-    } else if (live === 'true') {
-      data = await apiClient.getCached('fixtures', { live: 'all' }, { ttl: 120 });
-    } else {
-      const params: FixturesParams = { date };
-      if (league) params.league = league;
-      data = await apiClient.getCached('fixtures', params, { ttl: 3600 });
-    }
-    
-    return NextResponse.json(data);
+    const data = fixtureId
+      ? await apiClient.getCached('fixtures', { id: Number(fixtureId) }, { ttl: 120 })
+      : live === 'true'
+        ? await apiClient.getCached('fixtures', { live: 'all' }, { ttl: 30 })
+        : await apiClient.getCached(
+            'fixtures',
+            { date, ...(league ? { league: Number(league) } : {}) },
+            { ttl: 300 }
+          );
+
+    return NextResponse.json(data, {
+      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
+    });
   } catch (error) {
-    console.error('Error fetching matches:', error);
-    return NextResponse.json({ error: 'Failed to fetch matches' }, { status: 500 });
+    console.error('[api/matches] Failed to fetch matches:', error);
+    return NextResponse.json({ error: 'Unable to retrieve matches right now' }, { status: 502 });
   }
 }
