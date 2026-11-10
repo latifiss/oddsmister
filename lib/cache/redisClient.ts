@@ -1,15 +1,22 @@
 import { Redis } from '@upstash/redis';
 
-const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
-const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const url = process.env.UPSTASH_REDIS_REST_URL;
+const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-if (!UPSTASH_URL || !UPSTASH_TOKEN) {
-  console.warn('Upstash Redis credentials not defined, using memory cache fallback');
+const client = url && token ? new Redis({ url, token }) : null;
+
+if (!client) {
+  console.warn('[redis] Upstash credentials are missing. API caching is disabled.');
 }
 
-export const redis = new Redis({
-  url: UPSTASH_URL!,
-  token: UPSTASH_TOKEN!,
-});
+export const redis = {
+  async get<T = unknown>(key: string): Promise<T | null> {
+    if (!client) return null;
+    return client.get<T>(key);
+  },
 
-redis.ping().then(() => {}).catch((error) => {});
+  async setex(key: string, seconds: number, value: string): Promise<unknown> {
+    if (!client) return null;
+    return client.set(key, value, { ex: seconds });
+  },
+};
